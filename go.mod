@@ -1,5 +1,5 @@
 module github.com/applyinnovations/cicd
 
-go 1.22.4
+go 1.21.10
 
 require github.com/go-playground/webhooks/v6 v6.3.0
