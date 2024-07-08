@@ -17,7 +17,7 @@ import (
 
 const (
 	WEBHOOK_PATH = "/webhooks"
-	CACHE_DIR    = "/cache"
+	CACHE_DIR    = "/tmp"
 	LOG_DIR      = "/log"
 )
 
@@ -130,7 +130,7 @@ func main() {
 		panic(fmt.Sprintf("failed to create `%s` directory: %v", LOG_DIR, err))
 	}
 
-	logFilename := fmt.Sprintf("%s.log", time.Now().Format("20060102-150405"))
+	logFilename := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
 	logFile, err := os.OpenFile(filepath.Join(LOG_DIR, logFilename), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		panic(fmt.Sprintf("failed to open log file `%s`: %v", logFilename, err))
@@ -198,5 +198,5 @@ func main() {
 			}
 		}
 	})
-	http.ListenAndServe(":3000", nil)
+	http.ListenAndServe(":80", nil)
 }
