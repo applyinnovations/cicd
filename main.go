@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/go-playground/webhooks/v6/github"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -28,9 +30,10 @@ type Context struct {
 	repoBranchSha string
 }
 
-func generateContext(repo, branch, commitSha string) Context {
+func generateContext(repo, ref, commitSha string) Context {
 
 	// generate inputs to handlers
+	branch := strings.TrimPrefix(ref, "refs/heads/")
 	repoSha := sha256.Sum256([]byte(repo))
 	branchSha := sha256.Sum256([]byte(branch))
 	repoBranchSha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", repo, branch)))
@@ -38,9 +41,9 @@ func generateContext(repo, branch, commitSha string) Context {
 		repo,
 		branch,
 		commitSha,
-		string(repoSha[:]),
-		string(branchSha[:]),
-		string(repoBranchSha[:]),
+		hex.EncodeToString(repoSha[:]),
+		hex.EncodeToString(branchSha[:]),
+		hex.EncodeToString(repoBranchSha[:]),
 	}
 }
 
@@ -57,7 +60,7 @@ func handleUp(ctx Context) error {
 		}
 	}()
 
-	cmd := exec.Command("git", "clone", "--branch", ctx.branch, "--single-branch", ctx.repo, cacheDir)
+	cmd := exec.Command("git", "clone", "--branch", ctx.branch, "--depth", "1", "--single-branch", ctx.repo, cacheDir)
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
 	if err := cmd.Run(); err != nil {
@@ -65,7 +68,7 @@ func handleUp(ctx Context) error {
 	}
 
 	// validate docker compose file
-	cmd = exec.Command("docker", "compose", "--project-directory", cacheDir, "config")
+	cmd = exec.Command("docker", "compose", "--project-directory", cacheDir, "config", "--quiet")
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
 	if err := cmd.Run(); err != nil {
@@ -73,7 +76,7 @@ func handleUp(ctx Context) error {
 	}
 
 	// docker compose up -p sha256(org/repo/branch)
-	cmd = exec.Command("docker", "compose", "--project-directory", cacheDir, "--project-name", ctx.repoBranchSha)
+	cmd = exec.Command("docker", "compose", "--project-directory", cacheDir, "--project-name", ctx.repoBranchSha, "up", "--quiet-pull", "--detach")
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
 	if err := cmd.Run(); err != nil {
@@ -134,7 +137,7 @@ func main() {
 	}
 	defer logFile.Close()
 
-	jsonHandler := slog.NewJSONHandler(os.Stderr, nil)
+	jsonHandler := slog.NewJSONHandler(logFile, nil)
 	logger := slog.New(jsonHandler)
 	slog.SetDefault(logger)
 
