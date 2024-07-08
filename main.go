@@ -17,8 +17,8 @@ import (
 
 const (
 	WEBHOOK_PATH = "/webhooks"
-	CACHE_DIR    = "cache"
-	LOG_DIR      = "log"
+	CACHE_DIR    = "/cache"
+	LOG_DIR      = "/log"
 )
 
 type Context struct {
