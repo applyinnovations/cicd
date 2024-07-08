@@ -1,0 +1,4 @@
+
+cicd.applyinnovations.com.au {
+	reverse_proxy cicd:80
+}

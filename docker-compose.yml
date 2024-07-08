@@ -1,8 +1,25 @@
 services:
   cicd:
-    restart: on-failure
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - proxy
+
+  proxy:
+    image: caddy:latest
+    restart: unless-stopped
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    networks:
+      - proxy
+      - public
+
+networks:
+  public:
+    driver: host
+  proxy:
+    driver: bridge
