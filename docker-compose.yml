@@ -11,15 +11,11 @@ services:
 
   proxy:
     image: caddy:latest
+    network_mode: host
     restart: unless-stopped
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
-    networks:
-      - proxy
-      - public
 
 networks:
-  public:
-    driver: host
   proxy:
     driver: bridge
