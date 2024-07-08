@@ -1,0 +1,3 @@
+# github.com/go-playground/webhooks/v6 v6.3.0
+## explicit; go 1.15
+github.com/go-playground/webhooks/v6/github
