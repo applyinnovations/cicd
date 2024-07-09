@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/go-playground/webhooks/v6/github"
 )
@@ -131,14 +130,14 @@ func main() {
 		panic(fmt.Sprintf("failed to create `%s` directory: %v", LOG_DIR, err))
 	}
 
-	logFilename := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
-	logFile, err := os.OpenFile(filepath.Join(LOG_DIR, logFilename), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		panic(fmt.Sprintf("failed to open log file `%s`: %v", logFilename, err))
-	}
-	defer logFile.Close()
+	// logFilename := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
+	// logFile, err := os.OpenFile(filepath.Join(LOG_DIR, logFilename), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	// if err != nil {
+	// 	panic(fmt.Sprintf("failed to open log file `%s`: %v", logFilename, err))
+	// }
+	// defer logFile.Close()
 
-	jsonHandler := slog.NewJSONHandler(logFile, nil)
+	jsonHandler := slog.NewJSONHandler(os.Stderr, nil)
 	logger := slog.New(jsonHandler)
 	slog.SetDefault(logger)
 
@@ -153,6 +152,7 @@ func main() {
 		if err != nil {
 			if err == github.ErrEventNotFound {
 				// event out of scope
+				log.Println("Event out of scope")
 			}
 		}
 		switch payload := payload.(type) {
