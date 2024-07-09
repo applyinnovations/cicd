@@ -76,7 +76,7 @@ func handleUp(ctx Context) error {
 	}
 
 	// docker compose up -p sha256(org/repo/branch)
-	cmd = exec.Command("docker", "compose", "--project-directory", cacheDir, "--project-name", ctx.repoBranchSha, "up", "--quiet-pull", "--detach")
+	cmd = exec.Command("docker", "compose", "--project-directory", cacheDir, "--project-name", ctx.repoBranchSha, "up", "--quiet-pull", "--detach", "--build")
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
 	if err := cmd.Run(); err != nil {
