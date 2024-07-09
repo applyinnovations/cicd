@@ -60,7 +60,7 @@ func handleUp(ctx Context) error {
 		}
 	}()
 
-	cmd := exec.Command("git", "clone", "--branch", ctx.branch, "--depth", "1", "--single-branch", ctx.repo, cacheDir)
+	cmd := exec.Command("git", "clone", "--branch", ctx.branch, "--single-branch", ctx.repo, cacheDir)
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
 	if err := cmd.Run(); err != nil {
@@ -130,13 +130,6 @@ func main() {
 		panic(fmt.Sprintf("failed to create `%s` directory: %v", LOG_DIR, err))
 	}
 
-	// logFilename := fmt.Sprintf("%s.log", time.Now().Format("20060102150405"))
-	// logFile, err := os.OpenFile(filepath.Join(LOG_DIR, logFilename), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	// if err != nil {
-	// 	panic(fmt.Sprintf("failed to open log file `%s`: %v", logFilename, err))
-	// }
-	// defer logFile.Close()
-
 	jsonHandler := slog.NewJSONHandler(os.Stderr, nil)
 	logger := slog.New(jsonHandler)
 	slog.SetDefault(logger)
@@ -160,9 +153,7 @@ func main() {
 		case github.CreatePayload:
 			// deploy latest
 			if payload.RefType == "branch" {
-				repo := payload.Repository.CloneURL
-				branch := payload.Ref
-				ctx := generateContext(repo, branch, "")
+				ctx := generateContext(payload.Repository.CloneURL, payload.Ref, "")
 				err := handleUp(ctx)
 				if err != nil {
 					log.Println("failed `handleUp`: %w", err)
@@ -172,9 +163,7 @@ func main() {
 		case github.DeletePayload:
 			// clean up releases
 			if payload.RefType == "branch" {
-				repo := payload.Repository.CloneURL
-				branch := payload.Ref
-				ctx := generateContext(repo, branch, "")
+				ctx := generateContext(payload.Repository.CloneURL, payload.Ref, "")
 				err := handleDown(ctx)
 				if err != nil {
 					log.Println("failed `handleDown`: %w", err)
@@ -183,10 +172,7 @@ func main() {
 
 		case github.PushPayload:
 			// deploy latest
-			repo := payload.Repository.CloneURL
-			branch := payload.Ref
-			commitSha := payload.After
-			ctx := generateContext(repo, branch, commitSha)
+			ctx := generateContext(payload.Repository.CloneURL, payload.Ref, payload.After)
 			err := handleUp(ctx)
 			if err != nil {
 				log.Println("failed `handleUp`: %w", err)
