@@ -1,3 +1,8 @@
 cicd.applyinnovations.au {
-	reverse_proxy cicd:80
+	reverse_proxy cicd
 }
+
+status.applyinnovations.au {
+	reverse_proxy status
+}
+
