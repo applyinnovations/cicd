@@ -142,14 +142,7 @@ func main() {
 	hook, _ := github.New(github.Options.Secret("?"))
 	http.HandleFunc(WEBHOOK_PATH, func(w http.ResponseWriter, r *http.Request) {
 		payload, err := hook.Parse(r, github.PushEvent, github.DeleteEvent)
-		if err != nil {
-			if err == github.ErrEventNotFound {
-				// event out of scope
-				log.Println("Event out of scope")
-			}
-		}
 		switch payload := payload.(type) {
-
 		case github.CreatePayload:
 			// deploy latest
 			if payload.RefType == "branch" {
@@ -177,12 +170,25 @@ func main() {
 			if err != nil {
 				log.Println("failed `handleUp`: %w", err)
 			}
-
+		}
+		if err != nil {
+			if err == github.ErrEventNotFound {
+				// event out of scope
+				log.Println("Event out of scope")
+				w.WriteHeader(http.StatusNotImplemented)
+				fmt.Fprintln(w, "not implemented")
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintf(w, "%v", err)
+			}
+		} else {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintln(w, "ok")
 		}
 	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "OK")
+		fmt.Fprintln(w, "ok")
 	})
 	http.ListenAndServe(":80", nil)
 }
