@@ -6,7 +6,7 @@ FROM golang:1.22
 RUN apt-get update && \
     apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release jq && \
     curl -fsSL https://download.docker.com/linux/static/stable/x86_64/ \
-    | grep -Eo 'docker-[0-9]+\.[0-9]+\.[0-9]+\.tgz' \
+    | grep -Eo 'docker-24\.[0-9]+\.[0-9]+\.tgz' \
     | sort -V \
     | tail -n 1 \
     | xargs -I {} curl -fsSL -o docker.tgz https://download.docker.com/linux/static/stable/x86_64/{} && \
