@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/go-playground/webhooks/v6/github"
 	"log"
 	"log/slog"
 	"net/http"
@@ -13,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/go-playground/webhooks/v6/github"
 )
 
 const (
@@ -154,15 +155,13 @@ func main() {
 				// event out of scope
 			}
 		}
-		switch payload.(type) {
+		switch payload := payload.(type) {
 
 		case github.CreatePayload:
-
 			// deploy latest
-			create := payload.(github.CreatePayload)
-			if create.RefType == "branch" {
-				repo := create.Repository.CloneURL
-				branch := create.Ref
+			if payload.RefType == "branch" {
+				repo := payload.Repository.CloneURL
+				branch := payload.Ref
 				ctx := generateContext(repo, branch, "")
 				err := handleUp(ctx)
 				if err != nil {
@@ -170,33 +169,34 @@ func main() {
 				}
 			}
 
-		case github.PushPayload:
-
-			// deploy latest
-			push := payload.(github.PushPayload)
-			repo := push.Repository.CloneURL
-			branch := push.Ref
-			commitSha := push.After
-			ctx := generateContext(repo, branch, commitSha)
-			err := handleUp(ctx)
-			if err != nil {
-				log.Println("failed `handleUp`: %w", err)
-			}
-
 		case github.DeletePayload:
-
 			// clean up releases
-			del := payload.(github.DeletePayload)
-			if del.RefType == "branch" {
-				repo := del.Repository.CloneURL
-				branch := del.Ref
+			if payload.RefType == "branch" {
+				repo := payload.Repository.CloneURL
+				branch := payload.Ref
 				ctx := generateContext(repo, branch, "")
 				err := handleDown(ctx)
 				if err != nil {
 					log.Println("failed `handleDown`: %w", err)
 				}
 			}
+
+		case github.PushPayload:
+			// deploy latest
+			repo := payload.Repository.CloneURL
+			branch := payload.Ref
+			commitSha := payload.After
+			ctx := generateContext(repo, branch, commitSha)
+			err := handleUp(ctx)
+			if err != nil {
+				log.Println("failed `handleUp`: %w", err)
+			}
+
 		}
+	})
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, "OK")
 	})
 	http.ListenAndServe(":80", nil)
 }
