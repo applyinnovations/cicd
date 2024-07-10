@@ -17,7 +17,7 @@ import (
 
 const (
 	WEBHOOK_PATH = "/webhooks"
-	CACHE_DIR    = "/tmp"
+	CACHE_DIR    = "/tmp/cicd-cache"
 	LOG_DIR      = "/log"
 )
 
