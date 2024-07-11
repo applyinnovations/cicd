@@ -176,19 +176,19 @@ func main() {
 				// event out of scope
 				log.Println("Event out of scope")
 				w.WriteHeader(http.StatusNotImplemented)
-				fmt.Fprintln(w, "not implemented")
+				fmt.Fprintln(w, "{\"error\":\"not implemented\"}")
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprintf(w, "%v", err)
+				fmt.Fprintf(w, "{\"error\":\"%v\"}", err)
 			}
 		} else {
 			w.WriteHeader(http.StatusOK)
-			fmt.Fprintln(w, "ok")
+			fmt.Fprintln(w, "{}")
 		}
 	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "ok")
+		fmt.Fprintln(w, "{}")
 	})
 	http.ListenAndServe(":80", nil)
 }
