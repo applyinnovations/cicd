@@ -10,3 +10,7 @@ status.applyinnovations.au:443 {
 observability.applyinnovations.au {
 	reverse_proxy grafana
 }
+
+ss.applyinnovations.au {
+	reverse_proxy ss
+}
