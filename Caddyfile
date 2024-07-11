@@ -6,3 +6,7 @@ status.applyinnovations.au:80,
 status.applyinnovations.au:443 {
 	reverse_proxy status:8080
 }
+
+observability.applyinnovations.au {
+	reverse_proxy grafana
+}
