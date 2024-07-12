@@ -14,3 +14,11 @@ observability.applyinnovations.au {
 ss.applyinnovations.au {
 	reverse_proxy ss
 }
+
+detect.applyinnovations.au {
+	reverse_proxy detect
+}
+
+api.detect.applyinnovations.au {
+	reverse_proxy detect-api
+}
