@@ -20,5 +20,5 @@ detect.applyinnovations.au {
 }
 
 api.detect.applyinnovations.au {
-	reverse_proxy detect-api
+	reverse_proxy detect-api:80
 }
