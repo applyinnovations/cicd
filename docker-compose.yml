@@ -10,17 +10,7 @@ services:
     networks:
       - proxy
 
-  proxy:
-    image: caddy:latest
-    ports:
-      - "80:80"
-      - "443:443"
-    restart: unless-stopped
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-    networks:
-      - proxy
-
 networks:
   proxy:
-    driver: bridge
+    name: cicd-proxy
+    external: true
