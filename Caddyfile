@@ -22,3 +22,13 @@ detect.applyinnovations.au {
 api.detect.applyinnovations.au {
 	reverse_proxy detect-api
 }
+
+evlogbook.com {
+	header Content-Type text/html
+	respond <<HTML
+		<html>
+			<head><title>EV Logbook</title></head>
+			<body></body>
+		</html>
+		HTML 200
+}
