@@ -13,7 +13,6 @@ services:
     labels:
       caddy: cicd.applyinnovations.au
       caddy.reverse_proxy: "{{upstreams 80}}"
-      caddy.tls: "internal"
 
   caddy:
     image: lucaslorentz/caddy-docker-proxy:ci-alpine
