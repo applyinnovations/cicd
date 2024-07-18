@@ -6,8 +6,8 @@ services:
       dockerfile: Dockerfile
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - cicd_tmp:/tmp
-      - cicd_logs:/logs
+      - tmp:/tmp
+      - logs:/logs
     networks:
       - cicd-caddy
     labels:
@@ -24,15 +24,16 @@ services:
       - cicd-caddy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - cicd_caddy_data:/data
+      - caddy_data:/data
+    restart: unless-stopped
     deploy:
-      labels:
+      labels: # Global options
         caddy.email: hello@applyinnovations.com.au
       placement:
         constraints:
           - node.role == manager
       replicas: 1
-      restart_policy: 
+      restart_policy:
         condition: any
       resources:
         reservations:
@@ -42,9 +43,9 @@ services:
 networks:
   cicd-caddy:
     name: cicd-caddy
-    driver: overlay
+    driver: bridge 
 
 volumes:
-  cicd_caddy_data:
-  cicd_logs:
-  cicd_tmp:
+  caddy_data:
+  logs:
+  tmp:
