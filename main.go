@@ -67,8 +67,30 @@ func handleUp(ctx Context) error {
 		return fmt.Errorf("failed `git clone`: %w", err)
 	}
 
+	pklFilePath := filepath.Join(cacheDir, "docker-compose.pkl")
+	ymlFilePath := filepath.Join(cacheDir, "docker-compose.yml")
+
+	cmd = exec.Command("stat", pklFilePath)
+	cmd.Stdout = log.Writer()
+	cmd.Stderr = log.Writer()
+	if err := cmd.Run(); err == nil {
+		cmd = exec.Command("pkl", "eval", pklFilePath, "--project-dir", cacheDir, "--format", "yaml", "--output-path", ymlFilePath, "--property", "branch="+ctx.branch)
+		cmd.Stdout = log.Writer()
+		cmd.Stderr = log.Writer()
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed `pkl eval`: %w", err)
+		}
+	}
+
+	cmd = exec.Command("stat", ymlFilePath)
+	cmd.Stdout = log.Writer()
+	cmd.Stderr = log.Writer()
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed `stat docker-compose.yml`: %w", err)
+	}
+
 	// docker compose up -p sha256(org/repo/branch)
-	cmd = exec.Command("docker", "compose", "--project-directory", cacheDir, "--project-name", ctx.repoBranchSha, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
+	cmd = exec.Command("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.repoBranchSha, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
 	if err := cmd.Run(); err != nil {
