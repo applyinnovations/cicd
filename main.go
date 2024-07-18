@@ -17,7 +17,7 @@ import (
 
 const (
 	WEBHOOK_PATH = "/webhooks"
-	CACHE_DIR    = "/tmp/cicd-cache"
+	CACHE_DIR    = "/tmp"
 	LOG_DIR      = "/log"
 )
 
@@ -51,7 +51,7 @@ func generateContext(repo, ref, commitSha string) Context {
 func handleUp(ctx Context) error {
 
 	// clone/pull to cache/repos/repo/docker-compose.yml
-	cacheDir := filepath.Join(CACHE_DIR, ctx.repoSha, ctx.branchSha, ctx.commitSha)
+	cacheDir := filepath.Join(CACHE_DIR, ctx.commitSha)
 
 	defer func() {
 		err := os.RemoveAll(cacheDir)
@@ -65,14 +65,6 @@ func handleUp(ctx Context) error {
 	cmd.Stderr = log.Writer()
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed `git clone`: %w", err)
-	}
-
-	// validate docker compose file
-	cmd = exec.Command("docker", "compose", "--project-directory", cacheDir, "config", "--quiet")
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed `docker compose config`: %w", err)
 	}
 
 	// docker compose up -p sha256(org/repo/branch)
@@ -188,7 +180,7 @@ func main() {
 	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "{}")
+		fmt.Fprintln(w, "")
 	})
 	http.ListenAndServe(":80", nil)
 }
