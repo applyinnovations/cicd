@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -60,40 +59,30 @@ func handleUp(ctx Context) error {
 		}
 	}()
 
-	cmd := exec.Command("git", "clone", "--branch", ctx.branch, "--single-branch", ctx.repo, cacheDir)
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
+	err := execCmd("git", "clone", "--branch", ctx.branch, "--single-branch", ctx.repo, cacheDir)
+	if err != nil {
 		return fmt.Errorf("failed `git clone`: %w", err)
 	}
 
 	pklFilePath := filepath.Join(cacheDir, "docker-compose.pkl")
 	ymlFilePath := filepath.Join(cacheDir, "docker-compose.yml")
 
-	cmd = exec.Command("stat", pklFilePath)
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err == nil {
-		cmd = exec.Command("pkl", "eval", pklFilePath, "--format", "yaml", "--output-path", ymlFilePath, "--property", "branch="+ctx.branch)
-		cmd.Stdout = log.Writer()
-		cmd.Stderr = log.Writer()
-		if err := cmd.Run(); err != nil {
+	err = execCmd("stat", pklFilePath)
+	if err == nil {
+		err = execCmd("pkl", "eval", pklFilePath, "--format", "yaml", "--output-path", ymlFilePath, "--property", "branch="+ctx.branch)
+		if err != nil {
 			return fmt.Errorf("failed `pkl eval`: %w", err)
 		}
 	}
 
-	cmd = exec.Command("stat", ymlFilePath)
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
+	err = execCmd("stat", ymlFilePath)
+	if err != nil {
 		return fmt.Errorf("failed `stat docker-compose.yml`: %w", err)
 	}
 
 	// docker compose up -p sha256(org/repo/branch)
-	cmd = exec.Command("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.repoBranchSha, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
+	err = execCmd("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.repoBranchSha, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
+	if err != nil {
 		return fmt.Errorf("failed `docker compose up`: %w", err)
 	}
 
@@ -104,34 +93,26 @@ func handleUp(ctx Context) error {
 func handleDown(ctx Context) error {
 
 	// stop containers
-	cmd := exec.Command("docker", "container", "stop", fmt.Sprintf("$(docker ps -q -f name=%s)", ctx.repoBranchSha))
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
+	err := execCmd("docker", "container", "stop", fmt.Sprintf("$(docker ps -q -f name=%s)", ctx.repoBranchSha))
+	if err != nil {
 		return fmt.Errorf("failed `docker container stop`: %w", err)
 	}
 
 	// rm containers
-	cmd = exec.Command("docker", "container", "rm", fmt.Sprintf("$(docker ps -a -q -f name=%s)", ctx.repoBranchSha))
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
+	err = execCmd("docker", "container", "rm", fmt.Sprintf("$(docker ps -a -q -f name=%s)", ctx.repoBranchSha))
+	if err != nil {
 		return fmt.Errorf("failed `docker container rm`: %w", err)
 	}
 
 	// rm network
-	cmd = exec.Command("docker", "network", "rm", fmt.Sprintf("$(docker network ls -q -f name=%s)", ctx.repoBranchSha))
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
+	err = execCmd("docker", "network", "rm", fmt.Sprintf("$(docker network ls -q -f name=%s)", ctx.repoBranchSha))
+	if err != nil {
 		return fmt.Errorf("failed `docker network rm`: %w", err)
 	}
 
 	// rm volume
-	cmd = exec.Command("docker", "volume", "rm", fmt.Sprintf("$(docker volume ls -q -f name=%s)", ctx.repoBranchSha))
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
+	err = execCmd("docker", "volume", "rm", fmt.Sprintf("$(docker volume ls -q -f name=%s)", ctx.repoBranchSha))
+	if err != nil {
 		return fmt.Errorf("failed `docker volume rm`: %w", err)
 	}
 
