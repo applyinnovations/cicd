@@ -114,6 +114,15 @@ func handleDown(ctx Context) error {
 	return nil
 }
 
+//	func main() {
+//		ctx := generateContext("https://github.com/applyinnovations/ss", "refs/heads/other", "test-main", "")
+//		projectConf, err := getProjectConf(ctx)
+//		if err != nil {
+//			log.Println("failed `getProjectConf`: %w", err)
+//		}
+//		branchConfig := projectConf.getBranchConfig(ctx.branch)
+//		fmt.Printf("environment source: %s value: %s", branchConfig.Environment.Source, branchConfig.Environment.Value)
+//	}
 func main() {
 	err := os.MkdirAll(LOG_DIR, 0755)
 	if err != nil {

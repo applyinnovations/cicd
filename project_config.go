@@ -16,12 +16,12 @@ const (
 )
 
 type EnvironmentProvider struct {
-	source EnvironmentProviderSource `yaml:"type"`
-	value  string                    `yaml:"value"`
+	Source EnvironmentProviderSource `yaml:"source"`
+	Value  string                    `yaml:"value"`
 }
 
 type BranchConfig struct {
-	environment EnvironmentProvider `yaml:"environment"`
+	Environment EnvironmentProvider `yaml:"environment"`
 }
 
 type ProjectConfig map[string]BranchConfig
