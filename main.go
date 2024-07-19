@@ -74,7 +74,7 @@ func handleUp(ctx Context) error {
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
 	if err := cmd.Run(); err == nil {
-		cmd = exec.Command("pkl", "eval", pklFilePath, "--project-dir", cacheDir, "--format", "yaml", "--output-path", ymlFilePath, "--property", "branch="+ctx.branch)
+		cmd = exec.Command("pkl", "eval", pklFilePath, "--format", "yaml", "--output-path", ymlFilePath, "--property", "branch="+ctx.branch)
 		cmd.Stdout = log.Writer()
 		cmd.Stderr = log.Writer()
 		if err := cmd.Run(); err != nil {
