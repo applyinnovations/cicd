@@ -119,6 +119,19 @@ func handleDown(ctx Context) error {
 	return nil
 }
 
+func handleSecretUpload(w http.ResponseWriter, r *http.Request) {
+	// check method is post
+	// get the repo name from form
+	// get file from form
+	// pkl eval file contents
+	// store file in /secrets/repoSha.pkl
+}
+
+func handleSecretUploadPage(w http.ResponseWriter, r *http.Request) {
+	// check method is get
+	// return html form
+}
+
 func main() {
 	err := os.MkdirAll(LOG_DIR, 0755)
 	if err != nil {
@@ -181,6 +194,8 @@ func main() {
 			fmt.Fprintln(w, "{}")
 		}
 	})
+	http.HandleFunc("/secrets/upload", handleSecretUpload)
+	http.HandleFunc("/secrets", handleSecretUploadPage)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "")

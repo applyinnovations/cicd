@@ -8,6 +8,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - tmp:/tmp
       - logs:/logs
+      - secrets:/secrets
     networks:
       - cicd-caddy
     labels:
@@ -48,3 +49,4 @@ volumes:
   caddy_data:
   logs:
   tmp:
+  secrets:
