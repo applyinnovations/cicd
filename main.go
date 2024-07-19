@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/go-playground/webhooks/v6/github"
+	"gopkg.in/yaml.v3"
 	"log"
 	"log/slog"
 	"net/http"
@@ -11,8 +13,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/go-playground/webhooks/v6/github"
 )
 
 const (
@@ -24,13 +24,18 @@ const (
 type Context struct {
 	repo          string
 	branch        string
+	defaultBranch string
 	repoSha       string
 	branchSha     string
 	commitSha     string
 	repoBranchSha string
 }
 
-func generateContext(repo, ref, commitSha string) Context {
+type ProjectConf struct {
+	Phase map[string]string `yaml:"phase"`
+}
+
+func generateContext(repo, ref, defaultBranch, commitSha string) Context {
 
 	// generate inputs to handlers
 	branch := strings.TrimPrefix(ref, "refs/heads/")
@@ -40,6 +45,7 @@ func generateContext(repo, ref, commitSha string) Context {
 	return Context{
 		repo,
 		branch,
+		defaultBranch,
 		commitSha,
 		hex.EncodeToString(repoSha[:]),
 		hex.EncodeToString(branchSha[:]),
@@ -60,41 +66,25 @@ func handleUp(ctx Context) error {
 		}
 	}()
 
-	cmd := exec.Command("git", "clone", "--branch", ctx.branch, "--single-branch", ctx.repo, cacheDir)
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
+	err := execCmd("git", "clone", "--branch", ctx.branch, "--single-branch", ctx.repo, cacheDir)
+	if err != nil {
 		return fmt.Errorf("failed `git clone`: %w", err)
 	}
 
 	pklFilePath := filepath.Join(cacheDir, "docker-compose.pkl")
 	ymlFilePath := filepath.Join(cacheDir, "docker-compose.yml")
 
-	cmd = exec.Command("stat", pklFilePath)
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err == nil {
-		cmd = exec.Command("pkl", "eval", pklFilePath, "--format", "yaml", "--output-path", ymlFilePath, "--property", "branch="+ctx.branch)
-		cmd.Stdout = log.Writer()
-		cmd.Stderr = log.Writer()
-		if err := cmd.Run(); err != nil {
+	err = execCmd("stat", pklFilePath)
+	if err == nil {
+		err = execCmd("pkl", "eval", pklFilePath, "--format", "yaml", "--output-path", ymlFilePath, "--property", "branch="+ctx.branch)
+		if err != nil {
 			return fmt.Errorf("failed `pkl eval`: %w", err)
 		}
 	}
 
-	cmd = exec.Command("stat", ymlFilePath)
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
+	err = execCmd("stat", ymlFilePath)
+	if err != nil {
 		return fmt.Errorf("failed `stat docker-compose.yml`: %w", err)
-	}
-
-	// docker compose up -p sha256(org/repo/branch)
-	cmd = exec.Command("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.repoBranchSha, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed `docker compose up`: %w", err)
 	}
 
 	return nil
@@ -104,38 +94,37 @@ func handleUp(ctx Context) error {
 func handleDown(ctx Context) error {
 
 	// stop containers
-	cmd := exec.Command("docker", "container", "stop", fmt.Sprintf("$(docker ps -q -f name=%s)", ctx.repoBranchSha))
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
+	err := execCmd("docker", "container", "stop", fmt.Sprintf("$(docker ps -q -f name=%s)", ctx.repoBranchSha))
+	if err != nil {
 		return fmt.Errorf("failed `docker container stop`: %w", err)
 	}
 
 	// rm containers
-	cmd = exec.Command("docker", "container", "rm", fmt.Sprintf("$(docker ps -a -q -f name=%s)", ctx.repoBranchSha))
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
+	err = execCmd("docker", "container", "rm", fmt.Sprintf("$(docker ps -a -q -f name=%s)", ctx.repoBranchSha))
+	if err != nil {
 		return fmt.Errorf("failed `docker container rm`: %w", err)
 	}
 
 	// rm network
-	cmd = exec.Command("docker", "network", "rm", fmt.Sprintf("$(docker network ls -q -f name=%s)", ctx.repoBranchSha))
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
+	err = execCmd("docker", "network", "rm", fmt.Sprintf("$(docker network ls -q -f name=%s)", ctx.repoBranchSha))
+	if err != nil {
 		return fmt.Errorf("failed `docker network rm`: %w", err)
 	}
 
 	// rm volume
-	cmd = exec.Command("docker", "volume", "rm", fmt.Sprintf("$(docker volume ls -q -f name=%s)", ctx.repoBranchSha))
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	if err := cmd.Run(); err != nil {
+	err = execCmd("docker", "volume", "rm", fmt.Sprintf("$(docker volume ls -q -f name=%s)", ctx.repoBranchSha))
+	if err != nil {
 		return fmt.Errorf("failed `docker volume rm`: %w", err)
 	}
 
 	return nil
+}
+
+func execCmd(command string, args ...string) error {
+	cmd := exec.Command(command, args...)
+	cmd.Stdout = log.Writer()
+	cmd.Stderr = log.Writer()
+	return cmd.Run()
 }
 
 func main() {
@@ -160,7 +149,7 @@ func main() {
 		case github.CreatePayload:
 			// deploy latest
 			if payload.RefType == "branch" {
-				ctx := generateContext(payload.Repository.CloneURL, payload.Ref, "")
+				ctx := generateContext(payload.Repository.CloneURL, payload.Ref, payload.Repository.DefaultBranch, "")
 				err := handleUp(ctx)
 				if err != nil {
 					log.Println("failed `handleUp`: %w", err)
@@ -170,7 +159,7 @@ func main() {
 		case github.DeletePayload:
 			// clean up releases
 			if payload.RefType == "branch" {
-				ctx := generateContext(payload.Repository.CloneURL, payload.Ref, "")
+				ctx := generateContext(payload.Repository.CloneURL, payload.Ref, payload.Repository.DefaultBranch, "")
 				err := handleDown(ctx)
 				if err != nil {
 					log.Println("failed `handleDown`: %w", err)
@@ -179,7 +168,7 @@ func main() {
 
 		case github.PushPayload:
 			// deploy latest
-			ctx := generateContext(payload.Repository.CloneURL, payload.Ref, payload.After)
+			ctx := generateContext(payload.Repository.CloneURL, payload.Ref, payload.Repository.DefaultBranch, payload.After)
 			err := handleUp(ctx)
 			if err != nil {
 				log.Println("failed `handleUp`: %w", err)
@@ -205,4 +194,55 @@ func main() {
 		fmt.Fprintln(w, "")
 	})
 	http.ListenAndServe(":80", nil)
+}
+
+func (c *ProjectConf) getPhaseEnv(ctx Context) string {
+	// get value of branch in c.Phase if not exist use "*"
+	environment := c.Phase[ctx.branch]
+	if environment == "" {
+		environment = c.Phase["*"]
+	}
+	return environment
+}
+
+func getProjectConf(ctx Context) (projectConf ProjectConf, err error) {
+	c := ProjectConf{}
+
+	cacheDir := filepath.Join(CACHE_DIR, ctx.commitSha+ctx.defaultBranch)
+	defer func() {
+		err := os.RemoveAll(cacheDir)
+		if err != nil {
+			log.Printf("failed to remove `%s`\n", cacheDir)
+		}
+	}()
+
+	err = execCmd("git", "clone", "--branch", ctx.defaultBranch, "--single-branch", ctx.repo, cacheDir)
+	if err != nil {
+		return c, fmt.Errorf("failed `git clone`: %w", err)
+	}
+
+	envPklFilePath := filepath.Join(cacheDir, "env.pkl")
+	ymlPklFilePath := filepath.Join(cacheDir, "env.yml")
+
+	err = execCmd("stat", envPklFilePath)
+	if err != nil {
+		return c, nil
+	}
+
+	err = execCmd("pkl", "eval", envPklFilePath, "--format", "yaml", "--output-path", ymlPklFilePath, "--property", "branch="+ctx.branch)
+
+	if err != nil {
+		return c, fmt.Errorf("failed `pkl eval`: %w", err)
+	}
+	out, err := os.ReadFile(ymlPklFilePath)
+	if err != nil {
+		return c, fmt.Errorf("failed to read %+v", err)
+	}
+
+	err = yaml.Unmarshal(out, &c)
+	if err != nil {
+		return c, fmt.Errorf("failed to unmarshal %+v", err)
+	}
+
+	return c, nil
 }
