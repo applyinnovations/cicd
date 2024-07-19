@@ -80,7 +80,13 @@ func handleUp(ctx Context) error {
 		return fmt.Errorf("failed `stat docker-compose.yml`: %w", err)
 	}
 
-	// docker compose up -p sha256(org/repo/branch)
+	// check if secrets/repoSha.pkl exists
+	// if secrets exists, then build it with the props
+	// store secrets.pkl output into variable
+	// secrets.pkl must have ENV and ARG declarations
+	// transform secrets output to ["--env", "VAR=VALUE", "--env", "VAR2=VALUE2"]
+	// include any secrets to the following compose up command
+
 	err = execCmd("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.repoBranchSha, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
 	if err != nil {
 		return fmt.Errorf("failed `docker compose up`: %w", err)
