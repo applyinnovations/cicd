@@ -80,6 +80,11 @@ func handleUp(ctx Context) error {
 	if err != nil {
 		return fmt.Errorf("failed `stat docker-compose.yml`: %w", err)
 	}
+	// docker compose up -p sha256(org/repo/branch)
+	err = execCmd("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.repoBranchSha, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
+	if err != nil {
+		return fmt.Errorf("failed `docker compose up`: %w", err)
+	}
 
 	return nil
 }
