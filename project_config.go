@@ -9,21 +9,35 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type ProjectConf struct {
-	Phase map[string]string `yaml:"phase"`
+type EnvironmentProviderSource string
+
+const (
+	Phase EnvironmentProviderSource = "phase"
+)
+
+type EnvironmentProvider struct {
+	source EnvironmentProviderSource `yaml:"type"`
+	value  string                    `yaml:"value"`
 }
 
-func (c *ProjectConf) getPhaseEnv(ctx Context) string {
-	// get value of branch in c.Phase if not exist use "*"
-	environment := c.Phase[ctx.branch]
-	if environment == "" {
-		environment = c.Phase["*"]
+type BranchConfig struct {
+	environment EnvironmentProvider `yaml:"environment"`
+}
+
+type ProjectConfig map[string]BranchConfig
+
+func (pr ProjectConfig) getBranchConfig(branch string) BranchConfig {
+	if branchConfig, exists := pr[branch]; exists {
+		return branchConfig
+	} else if branchConfig, exists := pr["*"]; exists {
+		return branchConfig
 	}
-	return environment
+
+	return BranchConfig{}
 }
 
-func getProjectConf(ctx Context) (projectConf ProjectConf, err error) {
-	c := ProjectConf{}
+func getProjectConf(ctx Context) (projectConf ProjectConfig, err error) {
+	projectConfig := ProjectConfig{}
 	cacheDir := filepath.Join(CACHE_DIR, ctx.commitSha+"-"+ctx.defaultBranch)
 	defer func() {
 		err := os.RemoveAll(cacheDir)
@@ -34,7 +48,7 @@ func getProjectConf(ctx Context) (projectConf ProjectConf, err error) {
 
 	err = execCmd("git", "clone", "--branch", ctx.defaultBranch, "--single-branch", ctx.repo, cacheDir)
 	if err != nil {
-		return c, fmt.Errorf("failed `git clone`: %w", err)
+		return projectConfig, fmt.Errorf("failed `git clone`: %w", err)
 	}
 
 	envPklFilePath := filepath.Join(cacheDir, "env.pkl")
@@ -42,23 +56,23 @@ func getProjectConf(ctx Context) (projectConf ProjectConf, err error) {
 
 	err = execCmd("stat", envPklFilePath)
 	if err != nil {
-		return c, nil
+		return projectConfig, nil
 	}
 
 	err = execCmd("pkl", "eval", envPklFilePath, "--format", "yaml", "--output-path", ymlPklFilePath, "--property", "branch="+ctx.branch)
 
 	if err != nil {
-		return c, fmt.Errorf("failed `pkl eval`: %w", err)
+		return projectConfig, fmt.Errorf("failed `pkl eval`: %w", err)
 	}
 	out, err := os.ReadFile(ymlPklFilePath)
 	if err != nil {
-		return c, fmt.Errorf("failed to read %+v", err)
+		return projectConfig, fmt.Errorf("failed to read %+v", err)
 	}
 
-	err = yaml.Unmarshal(out, &c)
+	err = yaml.Unmarshal(out, &projectConfig)
 	if err != nil {
-		return c, fmt.Errorf("failed to unmarshal %+v", err)
+		return projectConfig, fmt.Errorf("failed to unmarshal %+v", err)
 	}
 
-	return c, nil
+	return projectConfig, nil
 }
