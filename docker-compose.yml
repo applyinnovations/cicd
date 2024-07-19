@@ -1,5 +1,6 @@
 services:
   cicd:
+    platform: linux/amd64
     restart: unless-stopped
     build:
       context: .
