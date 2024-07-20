@@ -131,7 +131,7 @@ func handleSecretUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	// get file from form
 	secret, header, err := r.FormFile("secret")
-	if err == nil {
+	if err != nil {
 		http.Error(w, "secret is missing", http.StatusBadRequest)
 		return
 	}
