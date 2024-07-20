@@ -124,7 +124,7 @@ func handleSecretUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// get cloneurl from form
-	cloneurl := r.FormValue("cloneurl")
+	cloneurl := r.FormValue("url")
 	if cloneurl == "" {
 		http.Error(w, "clone url is missing", http.StatusBadRequest)
 		return
@@ -181,15 +181,39 @@ func handleSecretUploadPage(w http.ResponseWriter, r *http.Request) {
 <html>
 	<head>
 		<title>Upload secrets.pkl</title>
+		<style>
+			* {
+				font-family: monospace;
+				color: #fff;
+				border: none;
+			}
+			html, body {
+			    display: flex;
+			    flex-direction: column;
+			    align-items: center;
+				background-color: #111;
+			}
+			form {
+				display: flex;
+			    flex-direction: column;
+			    gap: 10px;
+			    flex: 1;
+			    width: 500px;
+			}
+			input {
+				background-color: #555;
+			    padding: 10px;
+			}
+		</style>
 	</head>
 	<body>
-		<h1>Upload .pkl File</h1>
+		<h1>upload secrets.pkl file</h1>
 		<form id="secretform" enctype="multipart/form-data" action="/secrets/upload" method="post">
-			<label for="url">Clone URL</label>
+			<label for="url">clone url</label>
 			<input type="text" id="url" name="url" placeholder="https://github.com/account/repository.git" required />
-			<label for="secret">secret.pkl</label>
+			<label for="secret">secrets.pkl</label>
 			<input type="file" id="secret" name="secret" required />
-			<input type="submit" value="Upload" />
+			<input type="submit" value="upload" />
 		</form>
 	</body>
 </html>
@@ -221,6 +245,20 @@ func main() {
 	hook, _ := github.New(github.Options.Secret("?"))
 	http.HandleFunc(WEBHOOK_PATH, func(w http.ResponseWriter, r *http.Request) {
 		payload, err := hook.Parse(r, github.PushEvent, github.DeleteEvent)
+
+		if err != nil {
+			if err == github.ErrEventNotFound {
+				// event out of scope
+				http.Error(w, "not implemented", http.StatusNotImplemented)
+
+			} else {
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+			}
+		} else {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintln(w, "ok")
+		}
+
 		switch payload := payload.(type) {
 		case github.CreatePayload:
 			// deploy latest
@@ -250,26 +288,13 @@ func main() {
 				log.Println("failed `handleUp`: %w", err)
 			}
 		}
-		if err != nil {
-			if err == github.ErrEventNotFound {
-				// event out of scope
-				log.Println("Event out of scope")
-				w.WriteHeader(http.StatusNotImplemented)
-				fmt.Fprintln(w, "{\"error\":\"not implemented\"}")
-			} else {
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprintf(w, "{\"error\":\"%v\"}", err)
-			}
-		} else {
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintln(w, "{}")
-		}
+
 	})
 	http.HandleFunc("/secrets/upload", handleSecretUpload)
 	http.HandleFunc("/secrets", handleSecretUploadPage)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "")
+		fmt.Fprintln(w, "ok")
 	})
 	http.ListenAndServe(":80", nil)
 }
