@@ -22,13 +22,13 @@ func generateContext(cloneUrl, ref, commitSha string) Context {
 	branch := strings.TrimPrefix(ref, "refs/heads/")
 	cloneUrlSha := sha256.Sum256([]byte(cloneUrl))
 	branchSha := sha256.Sum256([]byte(branch))
-	repoBranchSha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", cloneUrl, branch)))
+	cloneUrlBranchSha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", cloneUrl, branch)))
 	return Context{
 		cloneUrl,
 		branch,
 		commitSha,
 		hex.EncodeToString(cloneUrlSha[:]),
 		hex.EncodeToString(branchSha[:]),
-		hex.EncodeToString(repoBranchSha[:]),
+		hex.EncodeToString(cloneUrlBranchSha[:]),
 	}
 }
