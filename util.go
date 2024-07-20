@@ -17,6 +17,15 @@ func execCmd(out io.Writer, command string, args ...string) error {
 	return cmd.Run()
 }
 
+type Context struct {
+	branch            string
+	cloneUrl          string
+	commitSha         string
+	cloneUrlSha       string
+	branchSha         string
+	cloneUrlBranchSha string
+}
+
 func generateContext(cloneUrl, ref, commitSha string) Context {
 	// generate inputs to handlers
 	branch := strings.TrimPrefix(ref, "refs/heads/")
@@ -24,8 +33,8 @@ func generateContext(cloneUrl, ref, commitSha string) Context {
 	branchSha := sha256.Sum256([]byte(branch))
 	cloneUrlBranchSha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", cloneUrl, branch)))
 	return Context{
-		cloneUrl,
 		branch,
+		cloneUrl,
 		commitSha,
 		hex.EncodeToString(cloneUrlSha[:]),
 		hex.EncodeToString(branchSha[:]),
