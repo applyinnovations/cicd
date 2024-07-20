@@ -9,19 +9,48 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 
-	"github.com/go-playground/webhooks/v6/github"
+	"github.com/bradleyfalzon/ghinstallation/v2"
+	"github.com/google/go-github/v63/github"
 )
 
 const (
-	WEBHOOK_PATH = "/webhooks"
-	CACHE_DIR    = "/tmp"
-	LOG_DIR      = "/log"
-	SECRETS_DIR  = "/secrets"
+	CACHE_DIR   = "/tmp"
+	LOG_DIR     = "/log"
+	SECRETS_DIR = "/secrets"
 )
 
+// build github client
+func buildGithubClient(installationId int64) (*github.Client, error) {
+	// cicd secrets
+	cicdCtx := generateContext("https://github.com/applyinnovations/cicd.git", "refs/heads/main", "")
+	secrets, err := parseSecretsToEnv(cicdCtx)
+	if err != nil {
+		log.Println("failed to parse cicd secrets")
+	}
+	githubAppId, err := strconv.ParseInt(secrets["GITHUB_APP_ID"], 10, 64)
+	if err != nil {
+		log.Println("failed to parse git app id")
+	}
+	githubPrivateKey := []byte(secrets["GITHUB_PRIVATE_KEY"])
+
+	// Shared transport to reuse TCP connections.
+	tr := http.DefaultTransport
+
+	itr, err := ghinstallation.New(tr, githubAppId, installationId, githubPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// Use installation transport with github.com/google/go-github
+	client := github.NewClient(&http.Client{Transport: itr})
+	return client, nil
+
+}
+
 // use when update to branch
-func handleUp(ctx Context) error {
+func handleUp(ctx Context, client *github.Client) error {
 
 	// clone/pull to cache/repos/repo/docker-compose.yml
 	cacheDir := filepath.Join(CACHE_DIR, ctx.commitSha)
@@ -59,7 +88,7 @@ func handleUp(ctx Context) error {
 	err = execCmd(log.Writer(), "stat", scrtFilePath)
 	if err == nil {
 		// if secrets exists, then build it with the props
-		secrets, err = parseSecrets(ctx, scrtFilePath)
+		secrets, err = parseSecretsToEnvArray(ctx)
 		if err != nil {
 			return fmt.Errorf("failed `parseSecrets`: %w", err)
 		}
@@ -182,33 +211,33 @@ func handleSecretUploadPage(w http.ResponseWriter, r *http.Request) {
 				border: none;
 			}
 			html, body {
-			    display: flex;
-			    flex-direction: column;
-			    align-items: center;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
 				background-color: #111;
 			}
 			form {
 				display: flex;
-			    flex-direction: column;
-			    gap: 10px;
-			    flex: 1;
-			    width: 500px;
+				flex-direction: column;
+				gap: 10px;
+				flex: 1;
+				width: 500px;
 			}
 			input {
 				background-color: #555;
-			    padding: 10px;
+				padding: 10px;
 			}
 		</style>
 	</head>
 	<body>
-		<h1>upload secrets.pkl file</h1>
+		<h1>upload repository secrets.pkl</h1>
 		<form id="secretform" enctype="multipart/form-data" action="/secrets/upload" method="post">
 			<label for="url">clone url</label>
 			<input type="text" id="url" name="url" placeholder="https://github.com/account/repository.git" required />
 			<label for="secret">secrets.pkl</label>
 			<input type="file" id="secret" name="secret" required />
 			<input type="submit" value="upload" />
-		</form>
+		</form>	
 	</body>
 </html>
 `
@@ -218,6 +247,57 @@ func handleSecretUploadPage(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Println("failed `handleSecretUploadPage`: %w", err)
+	}
+}
+
+func handleWebhook(w http.ResponseWriter, r *http.Request) {
+	payload, err := github.ValidatePayload(r, []byte("?"))
+	if err != nil {
+		log.Println("failed `github.ValidatePayload`: %w", err)
+		return
+	}
+	event, err := github.ParseWebHook(github.WebHookType(r), payload)
+	if err != nil {
+		log.Println("failed `github.ParseWebHook`: %w", err)
+		return
+	}
+
+	switch event := event.(type) {
+	case *github.CreateEvent:
+		// deploy latest
+		if event.GetRef() == "branch" {
+			ctx := generateContext(event.GetRepo().GetCloneURL(), event.GetRef(), "")
+			client, err := buildGithubClient(event.GetInstallation().GetID())
+			if err != nil {
+				log.Println("failed `buildGithubClient`: %w", err)
+				return
+			}
+			err = handleUp(ctx, client)
+			if err != nil {
+				log.Println("failed `handleUp`: %w", err)
+			}
+		}
+	case *github.PushEvent:
+		// deploy latest
+		ctx := generateContext(event.GetRepo().GetCloneURL(), event.GetRef(), event.GetAfter())
+		client, err := buildGithubClient(event.GetInstallation().GetID())
+		if err != nil {
+			log.Println("failed `buildGithubClient`: %w", err)
+			return
+		}
+		err = handleUp(ctx, client)
+		if err != nil {
+			log.Println("failed `handleUp`: %w", err)
+		}
+	case *github.DeleteEvent:
+		// clean up releases
+		if event.GetRef() == "branch" {
+			ctx := generateContext(event.GetRepo().GetCloneURL(), event.GetRef(), "")
+			err := handleDown(ctx)
+			if err != nil {
+				log.Println("failed `handleDown`: %w", err)
+			}
+		}
 	}
 }
 
@@ -236,54 +316,7 @@ func main() {
 		panic(fmt.Sprintf("failed to create `%s` directory: %v", CACHE_DIR, err))
 	}
 
-	hook, _ := github.New(github.Options.Secret("?"))
-	http.HandleFunc(WEBHOOK_PATH, func(w http.ResponseWriter, r *http.Request) {
-		payload, err := hook.Parse(r, github.PushEvent, github.DeleteEvent)
-
-		if err != nil {
-			if err == github.ErrEventNotFound {
-				// event out of scope
-				http.Error(w, "not implemented", http.StatusNotImplemented)
-
-			} else {
-				http.Error(w, "internal server error", http.StatusInternalServerError)
-			}
-		} else {
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintln(w, "ok")
-		}
-
-		switch payload := payload.(type) {
-		case github.CreatePayload:
-			// deploy latest
-			if payload.RefType == "branch" {
-				ctx := generateContext(payload.Repository.CloneURL, payload.Ref, "")
-				err := handleUp(ctx)
-				if err != nil {
-					log.Println("failed `handleUp`: %w", err)
-				}
-			}
-
-		case github.DeletePayload:
-			// clean up releases
-			if payload.RefType == "branch" {
-				ctx := generateContext(payload.Repository.CloneURL, payload.Ref, "")
-				err := handleDown(ctx)
-				if err != nil {
-					log.Println("failed `handleDown`: %w", err)
-				}
-			}
-
-		case github.PushPayload:
-			// deploy latest
-			ctx := generateContext(payload.Repository.CloneURL, payload.Ref, payload.After)
-			err := handleUp(ctx)
-			if err != nil {
-				log.Println("failed `handleUp`: %w", err)
-			}
-		}
-
-	})
+	http.HandleFunc("/webhooks", handleWebhook)
 	http.HandleFunc("/secrets/upload", handleSecretUpload)
 	http.HandleFunc("/secrets", handleSecretUploadPage)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

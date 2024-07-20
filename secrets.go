@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"gopkg.in/yaml.v3"
+	"log"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -20,14 +22,11 @@ func validateKey(key string) bool {
 	return validKey.MatchString(key)
 }
 
-func parseSecrets(ctx Context, filename string) ([]string, error) {
-	secrets := new(bytes.Buffer)
-	err := execCmd(secrets, "pkl", "eval", filename, "--format", "yaml", "--property", "branch="+ctx.branch)
+func parseSecretsToEnvArray(ctx Context) ([]string, error) {
+	envVars, err := parseSecretsToEnv(ctx)
 	if err != nil {
 		return nil, err
 	}
-	envVars := EnvironmentVariables{}
-	err = yaml.Unmarshal(secrets.Bytes(), &envVars)
 	var envArray []string
 	for key, value := range envVars {
 		if !validateKey(key) {
@@ -35,5 +34,21 @@ func parseSecrets(ctx Context, filename string) ([]string, error) {
 		}
 		envArray = append(envArray, fmt.Sprintf("%s=%s", key, escapeShellArg(value)))
 	}
-	return envArray, err
+	return envArray, nil
+}
+
+func parseSecretsToEnv(ctx Context) (EnvironmentVariables, error) {
+	scrtFilePath := filepath.Join("/secrets", ctx.cloneUrlSha)
+	err := execCmd(log.Writer(), "stat", scrtFilePath)
+	if err != nil {
+		return nil, err
+	}
+	secrets := new(bytes.Buffer)
+	err = execCmd(secrets, "pkl", "eval", scrtFilePath, "--format", "yaml", "--property", "branch="+ctx.branch)
+	if err != nil {
+		return nil, err
+	}
+	envVars := EnvironmentVariables{}
+	err = yaml.Unmarshal(secrets.Bytes(), &envVars)
+	return envVars, err
 }
