@@ -17,17 +17,17 @@ func execCmd(out io.Writer, command string, args ...string) error {
 	return cmd.Run()
 }
 
-func generateContext(repo, ref, commitSha string) Context {
+func generateContext(cloneUrl, ref, commitSha string) Context {
 	// generate inputs to handlers
 	branch := strings.TrimPrefix(ref, "refs/heads/")
-	repoSha := sha256.Sum256([]byte(repo))
+	cloneUrlSha := sha256.Sum256([]byte(cloneUrl))
 	branchSha := sha256.Sum256([]byte(branch))
-	repoBranchSha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", repo, branch)))
+	repoBranchSha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", cloneUrl, branch)))
 	return Context{
-		repo,
+		cloneUrl,
 		branch,
 		commitSha,
-		hex.EncodeToString(repoSha[:]),
+		hex.EncodeToString(cloneUrlSha[:]),
 		hex.EncodeToString(branchSha[:]),
 		hex.EncodeToString(repoBranchSha[:]),
 	}

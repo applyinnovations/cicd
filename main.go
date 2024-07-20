@@ -21,12 +21,12 @@ const (
 )
 
 type Context struct {
-	repo          string
-	branch        string
-	repoSha       string
-	branchSha     string
-	commitSha     string
-	repoBranchSha string
+	cloneUrl          string
+	branch            string
+	cloneUrlSha       string
+	branchSha         string
+	commitSha         string
+	cloneUrlBranchSha string
 }
 
 // use when update to branch
@@ -42,7 +42,7 @@ func handleUp(ctx Context) error {
 		}
 	}()
 
-	err := execCmd(log.Writer(), "git", "clone", "--branch", ctx.branch, "--single-branch", ctx.repo, cacheDir)
+	err := execCmd(log.Writer(), "git", "clone", "--branch", ctx.branch, "--single-branch", ctx.cloneUrl, cacheDir)
 	if err != nil {
 		return fmt.Errorf("failed `git clone`: %w", err)
 	}
@@ -64,7 +64,7 @@ func handleUp(ctx Context) error {
 	}
 
 	var secrets []string
-	scrtFilePath := filepath.Join("/secrets", ctx.repoSha+".pkl")
+	scrtFilePath := filepath.Join("/secrets", ctx.cloneUrlSha)
 	err = execCmd(log.Writer(), "stat", scrtFilePath)
 	if err == nil {
 		// if secrets exists, then build it with the props
@@ -74,7 +74,7 @@ func handleUp(ctx Context) error {
 		}
 	}
 
-	cmd := exec.Command("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.repoBranchSha, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
+	cmd := exec.Command("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.cloneUrlBranchSha, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
 	cmd.Env = secrets
@@ -91,25 +91,25 @@ func handleUp(ctx Context) error {
 func handleDown(ctx Context) error {
 
 	// stop containers
-	err := execCmd(log.Writer(), "docker", "container", "stop", fmt.Sprintf("$(docker ps -q -f name=%s)", ctx.repoBranchSha))
+	err := execCmd(log.Writer(), "docker", "container", "stop", fmt.Sprintf("$(docker ps -q -f name=%s)", ctx.cloneUrlBranchSha))
 	if err != nil {
 		return fmt.Errorf("failed `docker container stop`: %w", err)
 	}
 
 	// rm containers
-	err = execCmd(log.Writer(), "docker", "container", "rm", fmt.Sprintf("$(docker ps -a -q -f name=%s)", ctx.repoBranchSha))
+	err = execCmd(log.Writer(), "docker", "container", "rm", fmt.Sprintf("$(docker ps -a -q -f name=%s)", ctx.cloneUrlBranchSha))
 	if err != nil {
 		return fmt.Errorf("failed `docker container rm`: %w", err)
 	}
 
 	// rm network
-	err = execCmd(log.Writer(), "docker", "network", "rm", fmt.Sprintf("$(docker network ls -q -f name=%s)", ctx.repoBranchSha))
+	err = execCmd(log.Writer(), "docker", "network", "rm", fmt.Sprintf("$(docker network ls -q -f name=%s)", ctx.cloneUrlBranchSha))
 	if err != nil {
 		return fmt.Errorf("failed `docker network rm`: %w", err)
 	}
 
 	// rm volume
-	err = execCmd(log.Writer(), "docker", "volume", "rm", fmt.Sprintf("$(docker volume ls -q -f name=%s)", ctx.repoBranchSha))
+	err = execCmd(log.Writer(), "docker", "volume", "rm", fmt.Sprintf("$(docker volume ls -q -f name=%s)", ctx.cloneUrlBranchSha))
 	if err != nil {
 		return fmt.Errorf("failed `docker volume rm`: %w", err)
 	}
@@ -142,7 +142,7 @@ func handleSecretUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := generateContext(cloneurl, "", "")
 	// store file in /secrets/repoSha.pkl
 	os.MkdirAll(SECRETS_DIR, os.ModePerm)
-	filename := filepath.Join(SECRETS_DIR, ctx.repoSha)
+	filename := filepath.Join(SECRETS_DIR, ctx.cloneUrlSha)
 	out, err := os.Create(filename)
 	if err != nil {
 		http.Error(w, "failed to create secret.pkl", http.StatusInternalServerError)
