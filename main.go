@@ -20,15 +20,6 @@ const (
 	SECRETS_DIR  = "/secrets"
 )
 
-type Context struct {
-	cloneUrl          string
-	branch            string
-	cloneUrlSha       string
-	branchSha         string
-	commitSha         string
-	cloneUrlBranchSha string
-}
-
 // use when update to branch
 func handleUp(ctx Context) error {
 
