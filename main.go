@@ -1,15 +1,14 @@
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
+	"html/template"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/go-playground/webhooks/v6/github"
 )
@@ -18,32 +17,16 @@ const (
 	WEBHOOK_PATH = "/webhooks"
 	CACHE_DIR    = "/tmp"
 	LOG_DIR      = "/log"
+	SECRETS_DIR  = "/secrets"
 )
 
 type Context struct {
-	repo          string
-	branch        string
-	repoSha       string
-	branchSha     string
-	commitSha     string
-	repoBranchSha string
-}
-
-func generateContext(repo, ref, commitSha string) Context {
-
-	// generate inputs to handlers
-	branch := strings.TrimPrefix(ref, "refs/heads/")
-	repoSha := sha256.Sum256([]byte(repo))
-	branchSha := sha256.Sum256([]byte(branch))
-	repoBranchSha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", repo, branch)))
-	return Context{
-		repo,
-		branch,
-		commitSha,
-		hex.EncodeToString(repoSha[:]),
-		hex.EncodeToString(branchSha[:]),
-		hex.EncodeToString(repoBranchSha[:]),
-	}
+	cloneUrl          string
+	branch            string
+	cloneUrlSha       string
+	branchSha         string
+	commitSha         string
+	cloneUrlBranchSha string
 }
 
 // use when update to branch
@@ -59,7 +42,7 @@ func handleUp(ctx Context) error {
 		}
 	}()
 
-	err := execCmd("git", "clone", "--branch", ctx.branch, "--single-branch", ctx.repo, cacheDir)
+	err := execCmd(log.Writer(), "git", "clone", "--branch", ctx.branch, "--single-branch", ctx.cloneUrl, cacheDir)
 	if err != nil {
 		return fmt.Errorf("failed `git clone`: %w", err)
 	}
@@ -67,27 +50,36 @@ func handleUp(ctx Context) error {
 	pklFilePath := filepath.Join(cacheDir, "docker-compose.pkl")
 	ymlFilePath := filepath.Join(cacheDir, "docker-compose.yml")
 
-	err = execCmd("stat", pklFilePath)
+	err = execCmd(log.Writer(), "stat", pklFilePath)
 	if err == nil {
-		err = execCmd("pkl", "eval", pklFilePath, "--format", "yaml", "--output-path", ymlFilePath, "--property", "branch="+ctx.branch)
+		err = execCmd(log.Writer(), "pkl", "eval", pklFilePath, "--format", "yaml", "--output-path", ymlFilePath, "--property", "branch="+ctx.branch)
 		if err != nil {
-			return fmt.Errorf("failed `pkl eval`: %w", err)
+			return fmt.Errorf("failed `pkl eval docker-compose.yml`: %w", err)
 		}
 	}
 
-	err = execCmd("stat", ymlFilePath)
+	err = execCmd(log.Writer(), "stat", ymlFilePath)
 	if err != nil {
 		return fmt.Errorf("failed `stat docker-compose.yml`: %w", err)
 	}
 
-	// check if secrets/repoSha.pkl exists
-	// if secrets exists, then build it with the props
-	// store secrets.pkl output into variable
-	// secrets.pkl must have ENV and ARG declarations
-	// transform secrets output to ["--env", "VAR=VALUE", "--env", "VAR2=VALUE2"]
-	// include any secrets to the following compose up command
+	var secrets []string
+	scrtFilePath := filepath.Join("/secrets", ctx.cloneUrlSha)
+	err = execCmd(log.Writer(), "stat", scrtFilePath)
+	if err == nil {
+		// if secrets exists, then build it with the props
+		secrets, err = parseSecrets(ctx, scrtFilePath)
+		if err != nil {
+			return fmt.Errorf("failed `parseSecrets`: %w", err)
+		}
+	}
 
-	err = execCmd("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.repoBranchSha, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
+	cmd := exec.Command("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.cloneUrlBranchSha, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
+	cmd.Stdout = log.Writer()
+	cmd.Stderr = log.Writer()
+	cmd.Env = secrets
+
+	err = cmd.Run()
 	if err != nil {
 		return fmt.Errorf("failed `docker compose up`: %w", err)
 	}
@@ -99,25 +91,25 @@ func handleUp(ctx Context) error {
 func handleDown(ctx Context) error {
 
 	// stop containers
-	err := execCmd("docker", "container", "stop", fmt.Sprintf("$(docker ps -q -f name=%s)", ctx.repoBranchSha))
+	err := execCmd(log.Writer(), "docker", "container", "stop", fmt.Sprintf("$(docker ps -q -f name=%s)", ctx.cloneUrlBranchSha))
 	if err != nil {
 		return fmt.Errorf("failed `docker container stop`: %w", err)
 	}
 
 	// rm containers
-	err = execCmd("docker", "container", "rm", fmt.Sprintf("$(docker ps -a -q -f name=%s)", ctx.repoBranchSha))
+	err = execCmd(log.Writer(), "docker", "container", "rm", fmt.Sprintf("$(docker ps -a -q -f name=%s)", ctx.cloneUrlBranchSha))
 	if err != nil {
 		return fmt.Errorf("failed `docker container rm`: %w", err)
 	}
 
 	// rm network
-	err = execCmd("docker", "network", "rm", fmt.Sprintf("$(docker network ls -q -f name=%s)", ctx.repoBranchSha))
+	err = execCmd(log.Writer(), "docker", "network", "rm", fmt.Sprintf("$(docker network ls -q -f name=%s)", ctx.cloneUrlBranchSha))
 	if err != nil {
 		return fmt.Errorf("failed `docker network rm`: %w", err)
 	}
 
 	// rm volume
-	err = execCmd("docker", "volume", "rm", fmt.Sprintf("$(docker volume ls -q -f name=%s)", ctx.repoBranchSha))
+	err = execCmd(log.Writer(), "docker", "volume", "rm", fmt.Sprintf("$(docker volume ls -q -f name=%s)", ctx.cloneUrlBranchSha))
 	if err != nil {
 		return fmt.Errorf("failed `docker volume rm`: %w", err)
 	}
@@ -127,15 +119,88 @@ func handleDown(ctx Context) error {
 
 func handleSecretUpload(w http.ResponseWriter, r *http.Request) {
 	// check method is post
-	// get the repo name from form
+	if r.Method != http.MethodPost {
+		http.Error(w, "", http.StatusNotFound)
+		return
+	}
+	// get cloneurl from form
+	cloneurl := r.FormValue("cloneurl")
+	if cloneurl == "" {
+		http.Error(w, "clone url is missing", http.StatusBadRequest)
+		return
+	}
 	// get file from form
-	// pkl eval file contents
+	secret, header, err := r.FormFile("secret")
+	if err == nil {
+		http.Error(w, "secret is missing", http.StatusBadRequest)
+		return
+	}
+	if filepath.Ext(header.Filename) != ".pkl" {
+		http.Error(w, "only .pkl files are allowed", http.StatusBadRequest)
+		return
+	}
+	ctx := generateContext(cloneurl, "", "")
 	// store file in /secrets/repoSha.pkl
+	os.MkdirAll(SECRETS_DIR, os.ModePerm)
+	filename := filepath.Join(SECRETS_DIR, ctx.cloneUrlSha)
+	out, err := os.Create(filename)
+	if err != nil {
+		http.Error(w, "failed to create secret.pkl", http.StatusInternalServerError)
+		return
+	}
+	defer out.Close()
+	_, err = out.ReadFrom(secret)
+	if err != nil {
+		http.Error(w, "failed to write secret.pkl", http.StatusInternalServerError)
+		return
+	}
+	// pkl eval file contents
+	err = execCmd(log.Writer(), "pkl", "eval", filename, "--format", "yaml", "--property", "branch="+ctx.branch)
+	if err != nil {
+		http.Error(w, "error evaluating secret.pkl", http.StatusInternalServerError)
+		err = os.Remove(filename)
+		if err != nil {
+			log.Printf("failed `os.Remove(%s)`: %v\n", filename, err)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "")
 }
 
 func handleSecretUploadPage(w http.ResponseWriter, r *http.Request) {
 	// check method is get
+	if r.Method != http.MethodGet {
+		http.Error(w, "", http.StatusNotFound)
+		return
+	}
+
 	// return html form
+	html := `
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Upload secrets.pkl</title>
+	</head>
+	<body>
+		<h1>Upload .pkl File</h1>
+		<form id="secretform" enctype="multipart/form-data" action="/secrets/upload" method="post">
+			<label for="url">Clone URL</label>
+			<input type="text" id="url" name="url" placeholder="https://github.com/account/repository.git" required />
+			<label for="secret">secret.pkl</label>
+			<input type="file" id="secret" name="secret" required />
+			<input type="submit" value="Upload" />
+		</form>
+	</body>
+</html>
+`
+	t, err := template.New("upload").Parse(html)
+	if err == nil {
+		err = t.Execute(w, nil)
+	}
+	if err != nil {
+		log.Println("failed `handleSecretUploadPage`: %w", err)
+	}
 }
 
 func main() {
