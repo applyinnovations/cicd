@@ -159,7 +159,7 @@ func handleSecretUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "ok")
 }
 
 func handleSecretUploadPage(w http.ResponseWriter, r *http.Request) {
