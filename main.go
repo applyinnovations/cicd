@@ -145,19 +145,22 @@ func handleSecretUpload(w http.ResponseWriter, r *http.Request) {
 	filename := filepath.Join(SECRETS_DIR, ctx.cloneUrlSha)
 	out, err := os.Create(filename)
 	if err != nil {
+		log.Println("failed to create secret file: %w", err)
 		http.Error(w, "failed to create secret.pkl", http.StatusInternalServerError)
 		return
 	}
 	defer out.Close()
 	_, err = out.ReadFrom(secret)
 	if err != nil {
+		log.Println("failed to write secret file: %w", err)
 		http.Error(w, "failed to write secret.pkl", http.StatusInternalServerError)
 		return
 	}
 	// pkl eval file contents
 	err = execCmd(log.Writer(), "pkl", "eval", filename, "--format", "yaml", "--property", "branch="+ctx.branch)
 	if err != nil {
-		http.Error(w, "error evaluating secret.pkl", http.StatusInternalServerError)
+		log.Println("failed to evaluate secret file: %w", err)
+		http.Error(w, "failed to evaluate secret.pkl", http.StatusBadRequest)
 		err = os.Remove(filename)
 		if err != nil {
 			log.Printf("failed `os.Remove(%s)`: %v\n", filename, err)
