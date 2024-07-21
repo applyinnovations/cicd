@@ -282,10 +282,17 @@ func buildHandleWebhook() http.HandlerFunc {
 		case *github.PushEvent:
 			// deploy latest
 			ctx := generateContext(event.GetRepo().GetCloneURL(), event.GetRef(), event.GetAfter())
-			installationTokenSource := githubauth.NewInstallationTokenSource(event.GetInstallation().GetID(), appTokenSource)
-			err = handleUp(ctx, installationTokenSource)
-			if err != nil {
-				log.Println("failed `handleUp`: %w", err)
+			if !event.GetDeleted() {
+				installationTokenSource := githubauth.NewInstallationTokenSource(event.GetInstallation().GetID(), appTokenSource)
+				err = handleUp(ctx, installationTokenSource)
+				if err != nil {
+					log.Println("failed `handleUp`: %w", err)
+				}
+			} else {
+				err := handleDown(ctx)
+				if err != nil {
+					log.Println("failed `handleDown`: %w", err)
+				}
 			}
 			return
 		case *github.DeleteEvent:
