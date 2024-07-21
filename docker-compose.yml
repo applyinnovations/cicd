@@ -12,8 +12,8 @@ services:
     networks:
       - cicd-caddy
     labels:
-      caddy_1: cicd.applyinnovations.au
-      caddy_1.reverse_proxy: "{{upstreams 80}}"
+      caddy: cicd.applyinnovations.au
+      caddy.reverse_proxy_1: "/* {{upstreams 80}}"
 
   dozzle:
     image: amir20/dozzle:latest
@@ -28,8 +28,8 @@ services:
     networks:
       - cicd-caddy
     labels:
-      caddy_0: cicd.applyinnovations.au/logs
-      caddy_0.reverse_proxy: "{{upstreams 80}}"
+      caddy: cicd.applyinnovations.au
+      caddy.reverse_proxy_0: "/logs* {{upstreams 80}}"
 
   caddy:
     image: lucaslorentz/caddy-docker-proxy:ci-alpine
