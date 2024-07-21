@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/google/go-github/v63/github"
 	"github.com/jferrl/go-githubauth"
@@ -93,57 +94,64 @@ func handleUp(ctx Context, tokenSource oauth2.TokenSource) error {
 	return nil
 }
 
+func getResourceIds(ctx Context, args ...string) (string, error) {
+	// list resources
+	ids := new(bytes.Buffer)
+	extraArgs := []string{"--quiet", "--filter", fmt.Sprintf("name=%s-*", ctx.cloneUrlBranchSha)}
+	err := execCmd(ids, "docker", append(args, extraArgs...)...)
+	if err != nil {
+		return "", fmt.Errorf("failed `docker container ls`: %w", err)
+	}
+	return strings.TrimSpace(strings.ReplaceAll(ids.String(), "\n", " ")), nil
+}
+
 // use when branch is deleted or repo is deleted
 func handleDown(ctx Context) error {
 
 	// list running containers
-	runningContainerIds := new(bytes.Buffer)
-	err := execCmd(runningContainerIds, "docker", "container", "ls", "--quiet", "--filter", fmt.Sprintf("name=%s-*", ctx.cloneUrlBranchSha))
+	runningContainerIds, err := getResourceIds(ctx, "container", "ls")
 	if err != nil {
 		return fmt.Errorf("failed `docker container ls`: %w", err)
 	}
 
 	// stop containers
-	err = execCmd(log.Writer(), "docker", "container", "stop", runningContainerIds.String())
+	err = execCmd(log.Writer(), "docker", "container", "stop", runningContainerIds)
 	if err != nil {
 		return fmt.Errorf("failed `docker container stop`: %w", err)
 	}
 
 	// list all matching containers
-	containerIds := new(bytes.Buffer)
-	err = execCmd(containerIds, "docker", "container", "ls", "--all", "--quiet", "--filter", fmt.Sprintf("name=%s-*", ctx.cloneUrlBranchSha))
+	containerIds, err := getResourceIds(ctx, "container", "ls", "--all")
 	if err != nil {
 		return fmt.Errorf("failed `docker container ls --all`: %w", err)
 	}
 
 	// rm containers
-	err = execCmd(log.Writer(), "docker", "container", "rm", containerIds.String())
+	err = execCmd(log.Writer(), "docker", "container", "rm", containerIds)
 	if err != nil {
 		return fmt.Errorf("failed `docker container rm`: %w", err)
 	}
 
 	// list all matching containers
-	networkIds := new(bytes.Buffer)
-	err = execCmd(networkIds, "docker", "network", "ls", "--quiet", "--filter", fmt.Sprintf("name=%s-*", ctx.cloneUrlBranchSha))
+	networkIds, err := getResourceIds(ctx, "network", "ls")
 	if err != nil {
 		return fmt.Errorf("failed `docker network ls`: %w", err)
 	}
 
 	// rm network
-	err = execCmd(log.Writer(), "docker", "network", "rm", networkIds.String())
+	err = execCmd(log.Writer(), "docker", "network", "rm", networkIds)
 	if err != nil {
 		return fmt.Errorf("failed `docker network rm`: %w", err)
 	}
 
 	// list all matching containers
-	volumeIds := new(bytes.Buffer)
-	err = execCmd(volumeIds, "docker", "volume", "ls", "--quiet", "--filter", fmt.Sprintf("name=%s-*", ctx.cloneUrlBranchSha))
+	volumeIds, err := getResourceIds(ctx, "volume", "ls")
 	if err != nil {
 		return fmt.Errorf("failed `docker volume ls`: %w", err)
 	}
 
 	// rm volume
-	err = execCmd(log.Writer(), "docker", "volume", "rm", volumeIds.String())
+	err = execCmd(log.Writer(), "docker", "volume", "rm", volumeIds)
 	if err != nil {
 		return fmt.Errorf("failed `docker volume rm`: %w", err)
 	}
