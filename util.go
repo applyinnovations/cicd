@@ -11,6 +11,7 @@ import (
 )
 
 func execCmd(out io.Writer, command string, args ...string) error {
+	log.Printf("%s %+q", command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = out
 	cmd.Stderr = log.Writer()
