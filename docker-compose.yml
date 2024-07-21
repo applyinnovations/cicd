@@ -15,6 +15,16 @@ services:
       caddy: cicd.applyinnovations.au
       caddy.reverse_proxy: "{{upstreams 80}}"
 
+  dozzle:
+    image: amir20/dozzle:latest
+    environment:
+      DOZZLE_ADDR: ":80"
+      DOZZLE_HOSTNAME: cicd.applyinnovations.au
+      DOZZLE_ENABLE_ACTIONS: true
+      DOZZLE_NO_ANALYTICS: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
   caddy:
     image: lucaslorentz/caddy-docker-proxy:ci-alpine
     ports:
