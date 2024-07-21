@@ -96,25 +96,25 @@ func handleUp(ctx Context, tokenSource oauth2.TokenSource) error {
 func handleDown(ctx Context) error {
 
 	// stop containers
-	err := execCmd(log.Writer(), "docker", "container", "stop", fmt.Sprintf("$(docker ps -q -f name=%s)", ctx.cloneUrlBranchSha))
+	err := execCmd(log.Writer(), "docker", "container", "stop", fmt.Sprintf("$(docker ps -q -f name=%s-*)", ctx.cloneUrlBranchSha))
 	if err != nil {
 		return fmt.Errorf("failed `docker container stop`: %w", err)
 	}
 
 	// rm containers
-	err = execCmd(log.Writer(), "docker", "container", "rm", fmt.Sprintf("$(docker ps -a -q -f name=%s)", ctx.cloneUrlBranchSha))
+	err = execCmd(log.Writer(), "docker", "container", "rm", fmt.Sprintf("$(docker ps -a -q -f name=%s-*)", ctx.cloneUrlBranchSha))
 	if err != nil {
 		return fmt.Errorf("failed `docker container rm`: %w", err)
 	}
 
 	// rm network
-	err = execCmd(log.Writer(), "docker", "network", "rm", fmt.Sprintf("$(docker network ls -q -f name=%s)", ctx.cloneUrlBranchSha))
+	err = execCmd(log.Writer(), "docker", "network", "rm", fmt.Sprintf("$(docker network ls -q -f name=%s-*)", ctx.cloneUrlBranchSha))
 	if err != nil {
 		return fmt.Errorf("failed `docker network rm`: %w", err)
 	}
 
 	// rm volume
-	err = execCmd(log.Writer(), "docker", "volume", "rm", fmt.Sprintf("$(docker volume ls -q -f name=%s)", ctx.cloneUrlBranchSha))
+	err = execCmd(log.Writer(), "docker", "volume", "rm", fmt.Sprintf("$(docker volume ls -q -f name=%s-*)", ctx.cloneUrlBranchSha))
 	if err != nil {
 		return fmt.Errorf("failed `docker volume rm`: %w", err)
 	}
