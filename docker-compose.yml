@@ -12,7 +12,7 @@ services:
     networks:
       - cicd-caddy
     labels:
-      caddy: cicd.applyinnovations.au
+      caddy_1: cicd.applyinnovations.au
       caddy.reverse_proxy: "{{upstreams 80}}"
 
   dozzle:
@@ -28,7 +28,7 @@ services:
     networks:
       - cicd-caddy
     labels:
-      caddy: cicd.applyinnovations.au/logs
+      caddy_0: cicd.applyinnovations.au/logs
       caddy.reverse_proxy: "{{upstreams 80}}"
 
 
