@@ -242,7 +242,6 @@ func buildHandleWebhook() http.HandlerFunc {
 		log.Println("failed to parse cicd secrets")
 		return func(w http.ResponseWriter, r *http.Request) {}
 	}
-	log.Printf("%v\n", secrets)
 	githubAppId, err := strconv.ParseInt(secrets["GITHUB_APP_ID"], 10, 64)
 	if err != nil {
 		log.Println("failed to parse git app id")
