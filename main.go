@@ -94,15 +94,15 @@ func handleUp(ctx Context, tokenSource oauth2.TokenSource) error {
 	return nil
 }
 
-func getResourceIds(ctx Context, args ...string) (string, error) {
+func getResourceIds(ctx Context, args ...string) ([]string, error) {
 	// list resources
 	ids := new(bytes.Buffer)
 	extraArgs := []string{"--quiet", "--filter", fmt.Sprintf("name=%s-*", ctx.cloneUrlBranchSha)}
 	err := execCmd(ids, "docker", append(args, extraArgs...)...)
 	if err != nil {
-		return "", fmt.Errorf("failed `docker container ls`: %w", err)
+		return nil, fmt.Errorf("failed `docker container ls`: %w", err)
 	}
-	return strings.TrimSpace(strings.ReplaceAll(ids.String(), "\n", " ")), nil
+	return strings.Split(ids.String(), "\n"), nil
 }
 
 // use when branch is deleted or repo is deleted
@@ -115,7 +115,7 @@ func handleDown(ctx Context) error {
 	}
 
 	// stop containers
-	err = execCmd(log.Writer(), "docker", "container", "stop", runningContainerIds)
+	err = execCmd(log.Writer(), "docker", append([]string{"container", "stop"}, runningContainerIds...)...)
 	if err != nil {
 		return fmt.Errorf("failed `docker container stop`: %w", err)
 	}
@@ -127,7 +127,7 @@ func handleDown(ctx Context) error {
 	}
 
 	// rm containers
-	err = execCmd(log.Writer(), "docker", "container", "rm", containerIds)
+	err = execCmd(log.Writer(), "docker", append([]string{"container", "rm"}, containerIds...)...)
 	if err != nil {
 		return fmt.Errorf("failed `docker container rm`: %w", err)
 	}
@@ -139,7 +139,7 @@ func handleDown(ctx Context) error {
 	}
 
 	// rm network
-	err = execCmd(log.Writer(), "docker", "network", "rm", networkIds)
+	err = execCmd(log.Writer(), "docker", append([]string{"network", "rm"}, networkIds...)...)
 	if err != nil {
 		return fmt.Errorf("failed `docker network rm`: %w", err)
 	}
@@ -151,7 +151,7 @@ func handleDown(ctx Context) error {
 	}
 
 	// rm volume
-	err = execCmd(log.Writer(), "docker", "volume", "rm", volumeIds)
+	err = execCmd(log.Writer(), "docker", append([]string{"volume", "rm"}, volumeIds...)...)
 	if err != nil {
 		return fmt.Errorf("failed `docker volume rm`: %w", err)
 	}
