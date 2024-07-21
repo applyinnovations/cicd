@@ -97,7 +97,7 @@ func handleUp(ctx Context, tokenSource oauth2.TokenSource) error {
 func getResourceIds(ctx Context, args ...string) ([]string, error) {
 	// list resources
 	ids := new(bytes.Buffer)
-	extraArgs := []string{"--quiet", "--filter", fmt.Sprintf("name=%s-*", ctx.cloneUrlBranchSha)}
+	extraArgs := []string{"--quiet", "--filter", fmt.Sprintf("label=com.docker.compose.project=%s", ctx.cloneUrlBranchSha)}
 	err := execCmd(ids, "docker", append(args, extraArgs...)...)
 	if err != nil {
 		return nil, fmt.Errorf("failed `docker container ls`: %w", err)
@@ -114,10 +114,12 @@ func handleDown(ctx Context) error {
 		return fmt.Errorf("failed `docker container ls`: %w", err)
 	}
 
-	// stop containers
-	err = execCmd(log.Writer(), "docker", append([]string{"container", "stop"}, runningContainerIds...)...)
-	if err != nil {
-		return fmt.Errorf("failed `docker container stop`: %w", err)
+	if len(runningContainerIds) > 0 {
+		// stop containers
+		err = execCmd(log.Writer(), "docker", append([]string{"container", "stop"}, runningContainerIds...)...)
+		if err != nil {
+			return fmt.Errorf("failed `docker container stop`: %w", err)
+		}
 	}
 
 	// list all matching containers
@@ -127,9 +129,11 @@ func handleDown(ctx Context) error {
 	}
 
 	// rm containers
-	err = execCmd(log.Writer(), "docker", append([]string{"container", "rm"}, containerIds...)...)
-	if err != nil {
-		return fmt.Errorf("failed `docker container rm`: %w", err)
+	if len(containerIds) > 0 {
+		err = execCmd(log.Writer(), "docker", append([]string{"container", "rm"}, containerIds...)...)
+		if err != nil {
+			return fmt.Errorf("failed `docker container rm`: %w", err)
+		}
 	}
 
 	// list all matching containers
@@ -138,10 +142,12 @@ func handleDown(ctx Context) error {
 		return fmt.Errorf("failed `docker network ls`: %w", err)
 	}
 
-	// rm network
-	err = execCmd(log.Writer(), "docker", append([]string{"network", "rm"}, networkIds...)...)
-	if err != nil {
-		return fmt.Errorf("failed `docker network rm`: %w", err)
+	if len(networkIds) > 0 {
+		// rm network
+		err = execCmd(log.Writer(), "docker", append([]string{"network", "rm"}, networkIds...)...)
+		if err != nil {
+			return fmt.Errorf("failed `docker network rm`: %w", err)
+		}
 	}
 
 	// list all matching containers
@@ -150,10 +156,12 @@ func handleDown(ctx Context) error {
 		return fmt.Errorf("failed `docker volume ls`: %w", err)
 	}
 
-	// rm volume
-	err = execCmd(log.Writer(), "docker", append([]string{"volume", "rm"}, volumeIds...)...)
-	if err != nil {
-		return fmt.Errorf("failed `docker volume rm`: %w", err)
+	if len(volumeIds) > 0 {
+		// rm volume
+		err = execCmd(log.Writer(), "docker", append([]string{"volume", "rm"}, volumeIds...)...)
+		if err != nil {
+			return fmt.Errorf("failed `docker volume rm`: %w", err)
+		}
 	}
 	return nil
 }
