@@ -162,7 +162,7 @@ func handleSecretUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// pkl eval file contents
-	err = execCmd(log.Writer(), "pkl", "eval", filename, "--format", "yaml", "--property", "branch="+ctx.branch)
+	err = execCmd(nil, "pkl", "eval", filename, "--format", "yaml", "--property", "branch="+ctx.branch)
 	if err != nil {
 		log.Println("failed to evaluate secret file: %w", err)
 		http.Error(w, "failed to evaluate secret.pkl", http.StatusBadRequest)
