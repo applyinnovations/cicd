@@ -266,7 +266,7 @@ func buildHandleWebhook() http.HandlerFunc {
 			log.Println("failed `github.ParseWebHook`: %w", err)
 			return
 		}
-
+		log.Printf("%v\n", event)
 		switch event := event.(type) {
 		case *github.CreateEvent:
 			// deploy latest
