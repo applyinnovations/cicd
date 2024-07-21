@@ -294,19 +294,7 @@ func buildHandleWebhook() http.HandlerFunc {
 			log.Println("failed `github.ParseWebHook`: %w", err)
 			return
 		}
-		log.Printf("%v\n", event)
 		switch event := event.(type) {
-		case *github.CreateEvent:
-			// deploy latest
-			if event.GetRefType() == "branch" {
-				ctx := generateContext(event.GetRepo().GetCloneURL(), event.GetRef(), "")
-				installationTokenSource := githubauth.NewInstallationTokenSource(event.GetInstallation().GetID(), appTokenSource)
-				err = handleUp(ctx, installationTokenSource)
-				if err != nil {
-					log.Println("failed `handleUp`: %w", err)
-				}
-			}
-			return
 		case *github.PushEvent:
 			// deploy latest
 			ctx := generateContext(event.GetRepo().GetCloneURL(), event.GetRef(), event.GetAfter())
@@ -317,16 +305,6 @@ func buildHandleWebhook() http.HandlerFunc {
 					log.Println("failed `handleUp`: %w", err)
 				}
 			} else {
-				err := handleDown(ctx)
-				if err != nil {
-					log.Println("failed `handleDown`: %w", err)
-				}
-			}
-			return
-		case *github.DeleteEvent:
-			// clean up releases
-			if event.GetRefType() == "branch" {
-				ctx := generateContext(event.GetRepo().GetCloneURL(), event.GetRef(), "")
 				err := handleDown(ctx)
 				if err != nil {
 					log.Println("failed `handleDown`: %w", err)
