@@ -102,7 +102,7 @@ func getResourceIds(ctx Context, args ...string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed `docker container ls`: %w", err)
 	}
-	return strings.Split(ids.String(), "\n"), nil
+	return strings.Split(strings.TrimSuffix(ids.String(), "\n"), "\n"), nil
 }
 
 // use when branch is deleted or repo is deleted
