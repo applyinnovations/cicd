@@ -7,14 +7,9 @@ import (
 	"log"
 	"path/filepath"
 	"regexp"
-	"strings"
 )
 
 type EnvironmentVariables map[string]string
-
-func escapeShellArg(arg string) string {
-	return `'` + strings.Replace(arg, `'`, `'\''`, -1) + `'`
-}
 
 func validateKey(key string) bool {
 	// Only allow alphanumeric and underscore characters
@@ -32,7 +27,7 @@ func parseSecretsToEnvArray(ctx Context) ([]string, error) {
 		if !validateKey(key) {
 			return nil, fmt.Errorf("invalid env var key: %s", key)
 		}
-		envArray = append(envArray, fmt.Sprintf("%s=%s", key, escapeShellArg(value)))
+		envArray = append(envArray, fmt.Sprintf("%s=%s", key, value))
 	}
 	return envArray, nil
 }
