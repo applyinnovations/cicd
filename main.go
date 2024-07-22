@@ -304,7 +304,7 @@ func buildHandleWebhook() http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		payload, err := github.ValidatePayload(r, []byte("?"))
+		payload, err := github.ValidatePayload(r, []byte(secrets["GITHUB_WEBHOOK_SECRET"]))
 		if err != nil {
 			log.Println("failed `github.ValidatePayload`: %w", err)
 			return
