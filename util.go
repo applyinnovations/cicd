@@ -10,8 +10,12 @@ import (
 	"strings"
 )
 
-func execCmd(out io.Writer, command string, args ...string) error {
+func execLogCmd(out io.Writer, command string, args ...string) error {
 	log.Printf("%s %+q", command, args)
+	return execCmd(out, command, args...)
+}
+
+func execCmd(out io.Writer, command string, args ...string) error {
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = out
 	cmd.Stderr = log.Writer()

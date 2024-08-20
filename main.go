@@ -57,22 +57,22 @@ func handleUp(ctx Context, tokenSource oauth2.TokenSource) error {
 	pklFilePath := filepath.Join(cacheDir, "docker-compose.pkl")
 	ymlFilePath := filepath.Join(cacheDir, "docker-compose.yml")
 
-	err = execCmd(log.Writer(), "stat", pklFilePath)
+	err = execLogCmd(log.Writer(), "stat", pklFilePath)
 	if err == nil {
-		err = execCmd(log.Writer(), "pkl", "eval", pklFilePath, "--format", "yaml", "--output-path", ymlFilePath, "--property", "branch="+ctx.branch)
+		err = execLogCmd(log.Writer(), "pkl", "eval", pklFilePath, "--format", "yaml", "--output-path", ymlFilePath, "--property", "branch="+ctx.branch)
 		if err != nil {
 			return fmt.Errorf("failed `pkl eval docker-compose.yml`: %w", err)
 		}
 	}
 
-	err = execCmd(log.Writer(), "stat", ymlFilePath)
+	err = execLogCmd(log.Writer(), "stat", ymlFilePath)
 	if err != nil {
 		return fmt.Errorf("failed `stat docker-compose.yml`: %w", err)
 	}
 
 	var secrets []string
 	scrtFilePath := filepath.Join("/secrets", ctx.cloneUrlSha)
-	err = execCmd(log.Writer(), "stat", scrtFilePath)
+	err = execLogCmd(log.Writer(), "stat", scrtFilePath)
 	if err == nil {
 		// if secrets exists, then build it with the props
 		secrets, err = parseSecretsToEnvArray(ctx)
@@ -98,7 +98,7 @@ func getResourceIds(ctx Context, args ...string) ([]string, error) {
 	// list resources
 	ids := new(bytes.Buffer)
 	extraArgs := []string{"--quiet", "--filter", fmt.Sprintf("label=com.docker.compose.project=%s", ctx.cloneUrlBranchSha)}
-	err := execCmd(ids, "docker", append(args, extraArgs...)...)
+	err := execLogCmd(ids, "docker", append(args, extraArgs...)...)
 	if err != nil {
 		return nil, fmt.Errorf("failed `docker container ls`: %w", err)
 	}
@@ -120,7 +120,7 @@ func handleDown(ctx Context) error {
 
 	if len(runningContainerIds) > 0 {
 		// stop containers
-		err = execCmd(log.Writer(), "docker", append([]string{"container", "stop"}, runningContainerIds...)...)
+		err = execLogCmd(log.Writer(), "docker", append([]string{"container", "stop"}, runningContainerIds...)...)
 		if err != nil {
 			return fmt.Errorf("failed `docker container stop`: %w", err)
 		}
@@ -134,7 +134,7 @@ func handleDown(ctx Context) error {
 
 	// rm containers
 	if len(containerIds) > 0 {
-		err = execCmd(log.Writer(), "docker", append([]string{"container", "rm"}, containerIds...)...)
+		err = execLogCmd(log.Writer(), "docker", append([]string{"container", "rm"}, containerIds...)...)
 		if err != nil {
 			return fmt.Errorf("failed `docker container rm`: %w", err)
 		}
@@ -148,7 +148,7 @@ func handleDown(ctx Context) error {
 
 	if len(networkIds) > 0 {
 		// rm network
-		err = execCmd(log.Writer(), "docker", append([]string{"network", "rm"}, networkIds...)...)
+		err = execLogCmd(log.Writer(), "docker", append([]string{"network", "rm"}, networkIds...)...)
 		if err != nil {
 			return fmt.Errorf("failed `docker network rm`: %w", err)
 		}
@@ -162,7 +162,7 @@ func handleDown(ctx Context) error {
 
 	if len(volumeIds) > 0 {
 		// rm volume
-		err = execCmd(log.Writer(), "docker", append([]string{"volume", "rm"}, volumeIds...)...)
+		err = execLogCmd(log.Writer(), "docker", append([]string{"volume", "rm"}, volumeIds...)...)
 		if err != nil {
 			return fmt.Errorf("failed `docker volume rm`: %w", err)
 		}
