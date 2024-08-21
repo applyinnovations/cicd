@@ -81,7 +81,7 @@ func handleUp(ctx Context, tokenSource oauth2.TokenSource) error {
 		}
 	}
 
-	cmd := exec.Command("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.repositoryBranch, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
+	cmd := exec.Command("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.projectName, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
 	cmd.Env = secrets
@@ -97,7 +97,7 @@ func handleUp(ctx Context, tokenSource oauth2.TokenSource) error {
 func getResourceIds(ctx Context, args ...string) ([]string, error) {
 	// list resources
 	ids := new(bytes.Buffer)
-	extraArgs := []string{"--quiet", "--filter", fmt.Sprintf("label=com.docker.compose.project=%s", ctx.cloneUrlBranchSha)}
+	extraArgs := []string{"--quiet", "--filter", fmt.Sprintf("label=com.docker.compose.project=%s", ctx.projectName)}
 	err := execLogCmd(ids, "docker", append(args, extraArgs...)...)
 	if err != nil {
 		return nil, fmt.Errorf("failed `docker container ls`: %w", err)
