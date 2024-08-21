@@ -5,9 +5,11 @@ services:
         labels:
             - label3=test3
             - label4=arraytest
-            - dev.dozzle.group=test-label
+            - dev.dozzle.group=orginization/repository/test-branch
+            - dev.dozzle.name=array_labels
     key_labels:
         labels:
-            dev.dozzle.group: test-label
+            dev.dozzle.group: orginization/repository/test-branch
+            dev.dozzle.name: key_labels
             label.testlabel2: newlabel2
             label1: testlabel1

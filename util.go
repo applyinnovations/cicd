@@ -52,7 +52,8 @@ func generateContext(cloneUrl, ref, commitSha, repository string) Context {
 	}
 }
 
-func addDozzleGroupLabel(filePath string, label string) error {
+func addDozzleGroupLabel(ctx Context, filePath string) error {
+	group := fmt.Sprintf("%s/%s", strings.ToLower(ctx.repository), strings.ToLower(ctx.branch))
 	yamlFile, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read docker compose yaml: %w", err)
@@ -67,7 +68,7 @@ func addDozzleGroupLabel(filePath string, label string) error {
 		// no services
 		return nil
 	}
-	for _, service := range services {
+	for serviceKey, service := range services {
 		serviceMap, ok := service.(map[string]interface{})
 		if !ok {
 			continue
@@ -75,13 +76,17 @@ func addDozzleGroupLabel(filePath string, label string) error {
 
 		if labels, ok := serviceMap["labels"].(map[string]interface{}); ok {
 			// add to the labels map
-			labels["dev.dozzle.group"] = label
+			labels["dev.dozzle.group"] = group
+			labels["dev.dozzle.name"] = serviceKey
 		} else if labelArray, ok := serviceMap["labels"].([]interface{}); ok {
 			// add to the labels array
-			serviceMap["labels"] = append(labelArray, fmt.Sprintf("dev.dozzle.group=%s", label))
+			serviceMap["labels"] = append(labelArray, fmt.Sprintf("dev.dozzle.group=%s", group), fmt.Sprintf("dev.dozzle.name=%s", serviceKey))
 		} else {
 			// create a new labels entry
-			serviceMap["labels"] = map[string]string{"dev.dozzle.group": label}
+			serviceMap["labels"] = map[string]string{
+				"dev.dozzle.group": group,
+				"dev.dozzle.name":  serviceKey,
+			}
 		}
 	}
 	// write new docker compose to file

@@ -71,8 +71,7 @@ func handleUp(ctx Context, tokenSource oauth2.TokenSource) error {
 	}
 
 	// add dev.dozzle.group label to all services inside docker compose (some valid compose might not have services)
-	label := fmt.Sprintf("%s-%s", strings.ToLower(ctx.repository), strings.ToLower(ctx.branch))
-	err = addDozzleGroupLabel(ymlFilePath, label)
+	err = addDozzleGroupLabel(ctx, ymlFilePath)
 	if err != nil {
 		return fmt.Errorf("failed `addDozzleGroupLabel`: %w", err)
 	}

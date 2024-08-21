@@ -29,8 +29,9 @@ func TestAddDozzleGroupLabel(t *testing.T) {
 	}()
 
 	// Run the function being tested
-	if err := addDozzleGroupLabel(originalFile, "test-label"); err != nil {
-		t.Fatalf(`addDozzleGroupLabel("%s", "test-label") returned error: %v`, originalFile, err)
+	ctx := generateContext("clone-url", "refs/heads/test-branch", "81833f155e3dbc0c0dac89f25bf4a797f29f17d8", "orginization/repository")
+	if err := addDozzleGroupLabel(ctx, originalFile); err != nil {
+		t.Fatalf(`addDozzleGroupLabel(ctx, "%s") returned error: %v`, originalFile, err)
 	}
 
 	// Compare the modified file with the expected file
