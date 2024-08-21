@@ -70,12 +70,6 @@ func handleUp(ctx Context, tokenSource oauth2.TokenSource) error {
 		return fmt.Errorf("failed `stat docker-compose.yml`: %w", err)
 	}
 
-	// add dev.dozzle.group label to all services inside docker compose (some valid compose might not have services)
-	err = addDozzleGroupLabel(ctx, ymlFilePath)
-	if err != nil {
-		return fmt.Errorf("failed `addDozzleGroupLabel`: %w", err)
-	}
-
 	var secrets []string
 	scrtFilePath := filepath.Join("/secrets", ctx.cloneUrlSha)
 	err = execLogCmd(log.Writer(), "stat", scrtFilePath)
@@ -87,7 +81,7 @@ func handleUp(ctx Context, tokenSource oauth2.TokenSource) error {
 		}
 	}
 
-	cmd := exec.Command("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.cloneUrlBranchSha, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
+	cmd := exec.Command("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.repositoryBranch, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
 	cmd.Env = secrets

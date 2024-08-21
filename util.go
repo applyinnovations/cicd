@@ -29,6 +29,7 @@ type Context struct {
 	branch            string
 	cloneUrl          string
 	repository        string
+	repositoryBranch  string
 	commitSha         string
 	cloneUrlSha       string
 	branchSha         string
@@ -41,10 +42,12 @@ func generateContext(cloneUrl, ref, commitSha, repository string) Context {
 	cloneUrlSha := sha256.Sum256([]byte(cloneUrl))
 	branchSha := sha256.Sum256([]byte(branch))
 	cloneUrlBranchSha := sha256.Sum256([]byte(fmt.Sprintf("%s%s", cloneUrl, branch)))
+	repositoryBranch := fmt.Sprintf("%s/%s", strings.ToLower(repository), strings.ToLower(branch))
 	return Context{
 		branch,
 		cloneUrl,
 		repository,
+		repositoryBranch,
 		commitSha,
 		hex.EncodeToString(cloneUrlSha[:]),
 		hex.EncodeToString(branchSha[:]),
