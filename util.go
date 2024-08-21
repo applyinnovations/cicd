@@ -35,7 +35,7 @@ type Context struct {
 	cloneUrlBranchSha string
 }
 
-func generateContext(repository, cloneUrl, ref, commitSha string) Context {
+func generateContext(cloneUrl, ref, commitSha, repository string) Context {
 	// generate inputs to handlers
 	branch := strings.TrimPrefix(ref, "refs/heads/")
 	cloneUrlSha := sha256.Sum256([]byte(cloneUrl))
