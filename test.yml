@@ -1,0 +1,11 @@
+services:
+  key_labels:
+    labels:
+      label1: testlabel1
+      label.testlabel2: newlabel2
+  array_labels:
+    labels:
+      - label3=test3
+      - label4=arraytest
+another_entry:
+  random:

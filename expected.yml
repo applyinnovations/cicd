@@ -1,0 +1,13 @@
+another_entry:
+    random: null
+services:
+    array_labels:
+        labels:
+            - label3=test3
+            - label4=arraytest
+            - dev.dozzle.group=test-label
+    key_labels:
+        labels:
+            dev.dozzle.group: test-label
+            label.testlabel2: newlabel2
+            label1: testlabel1

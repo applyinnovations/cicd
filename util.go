@@ -62,21 +62,26 @@ func addDozzleGroupLabel(filePath string, label string) error {
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal docker compose yaml: %w", err)
 	}
-	services, ok := yamlData["services"].(map[string]map[string]interface{})
+	services, ok := yamlData["services"].(map[string]interface{})
 	if !ok {
 		// no services
 		return nil
 	}
 	for _, service := range services {
-		labelMap, ok := service["labels"].(map[string]string)
-		if ok {
-			// add to the labels map
-			labelMap["dev.dozzle.group"] = label
+		serviceMap, ok := service.(map[string]interface{})
+		if !ok {
+			continue
 		}
-		labelArray, ok := service["labels"].([]string)
-		if ok {
+
+		if labels, ok := serviceMap["labels"].(map[string]interface{}); ok {
+			// add to the labels map
+			labels["dev.dozzle.group"] = label
+		} else if labelArray, ok := serviceMap["labels"].([]interface{}); ok {
 			// add to the labels array
-			service["labels"] = append(labelArray, fmt.Sprintf("dev.dozzle.group=%s", label))
+			serviceMap["labels"] = append(labelArray, fmt.Sprintf("dev.dozzle.group=%s", label))
+		} else {
+			// create a new labels entry
+			serviceMap["labels"] = map[string]string{"dev.dozzle.group": label}
 		}
 	}
 	// write new docker compose to file
