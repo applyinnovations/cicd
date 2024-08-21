@@ -70,6 +70,13 @@ func handleUp(ctx Context, tokenSource oauth2.TokenSource) error {
 		return fmt.Errorf("failed `stat docker-compose.yml`: %w", err)
 	}
 
+	// add dev.dozzle.group label to all services inside docker compose (some valid compose might not have services)
+	label := fmt.Sprintf("%s-%s", strings.ToLower(ctx.repository), strings.ToLower(ctx.branch))
+	err = addDozzleGroupLabel(ymlFilePath, label)
+	if err != nil {
+		return fmt.Errorf("failed `addDozzleGroupLabel`: %w", err)
+	}
+
 	var secrets []string
 	scrtFilePath := filepath.Join("/secrets", ctx.cloneUrlSha)
 	err = execLogCmd(log.Writer(), "stat", scrtFilePath)
@@ -77,7 +84,7 @@ func handleUp(ctx Context, tokenSource oauth2.TokenSource) error {
 		// if secrets exists, then build it with the props
 		secrets, err = parseSecretsToEnvArray(ctx)
 		if err != nil {
-			return fmt.Errorf("failed `parseSecrets`: %w", err)
+			return fmt.Errorf("failed `parseSecretsToEnvArray`: %w", err)
 		}
 	}
 
@@ -192,7 +199,7 @@ func handleSecretUpload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "only .pkl files are allowed", http.StatusBadRequest)
 		return
 	}
-	ctx := generateContext(cloneurl, "", "")
+	ctx := generateContext(cloneurl, "", "", "")
 	// store file in /secrets/repoSha.pkl
 	os.MkdirAll(SECRETS_DIR, os.ModePerm)
 	filename := filepath.Join(SECRETS_DIR, ctx.cloneUrlSha)
@@ -284,7 +291,7 @@ func handleSecretUploadPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func buildHandleWebhook() http.HandlerFunc {
-	cicdCtx := generateContext("https://github.com/applyinnovations/cicd.git", "refs/heads/main", "")
+	cicdCtx := generateContext("https://github.com/applyinnovations/cicd.git", "refs/heads/main", "", "applyinnovations/cicd")
 	secrets, err := parseSecretsToEnv(cicdCtx)
 	if err != nil {
 		log.Println("failed to parse cicd secrets")
@@ -317,7 +324,7 @@ func buildHandleWebhook() http.HandlerFunc {
 		switch event := event.(type) {
 		case *github.PushEvent:
 			// deploy latest
-			ctx := generateContext(event.GetRepo().GetCloneURL(), event.GetRef(), event.GetAfter())
+			ctx := generateContext(event.GetRepo().GetCloneURL(), event.GetRef(), event.GetAfter(), event.GetRepo().GetFullName())
 			if !event.GetDeleted() {
 				installationTokenSource := githubauth.NewInstallationTokenSource(event.GetInstallation().GetID(), appTokenSource)
 				err = handleUp(ctx, installationTokenSource)
