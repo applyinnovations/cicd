@@ -44,6 +44,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - traefik-proxy
+    labels:
+      - "traefik.http.routers.traefik-api.rule=Host(`cicd.applyinnovations.au/traefik`)"
+      - "traefik.http.routers.traefik-api.service=api@internal"
 
 networks:
   cicd-caddy:
