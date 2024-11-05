@@ -49,6 +49,7 @@ services:
     networks:
       - traefik-proxy
     labels:
+      - traefik.enable=true
       - traefik.http.routers.traefik.rule=Host(`traefik.applyinnovations.au`)
       - traefik.http.routers.traefik.service=api@internal
 
