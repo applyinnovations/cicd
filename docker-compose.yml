@@ -34,7 +34,7 @@ services:
       - traefik.enable=true
       - traefik.http.routers.cicd-logs.priority=1
       - traefik.http.routers.cicd-logs.service=cicd-logs
-      - traefik.http.routers.cicd-logs.rule=Host(`cicd.applyinnovations.au`) && PathPrefix(`/logs`)
+      - traefik.http.routers.cicd-logs.rule="Host(`cicd.applyinnovations.au`) && PathPrefix(`/logs`)"
       - traefik.http.services.cicd-logs.loadbalancer.server.port=80
 
   traefik:
