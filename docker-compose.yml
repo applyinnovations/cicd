@@ -49,7 +49,7 @@ services:
     networks:
       - traefik-proxy
     labels:
-      - traefik.http.routers.traefik.rule=Host(`traefik.cicd.applyinnovations.au`)
+      - traefik.http.routers.traefik.rule=Host(`traefik.applyinnovations.au`)
       - traefik.http.routers.traefik.service=api@internal
 
 networks:
