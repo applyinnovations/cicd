@@ -1,3 +1,6 @@
+tracing:
+  serviceName: traefik
+
 entryPoints:
   web:
     address: ":80"
