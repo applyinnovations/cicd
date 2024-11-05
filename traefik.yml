@@ -1,6 +1,20 @@
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+certificatesResolvers:
+  applyinnovations:
+    acme:
+      email: hello@applyinnovations.com.au
+      storage: /certificates/applyinnovations-acme.json
+      httpChallenge:
+        entryPoint: web
 api:
   insecure: true
   dashboard: true
+
 providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"

@@ -17,6 +17,8 @@ services:
       - traefik.http.routers.cicd.service=cicd
       - traefik.http.routers.cicd.rule=Host(`cicd.applyinnovations.au`)
       - traefik.http.services.cicd.loadbalancer.server.port=80
+      - traefik.http.routers.cicd.tls=true
+      - traefik.http.routers.cicd.tls.certresolver=applyinnovations
 
   dozzle:
     image: amir20/dozzle:latest
@@ -36,6 +38,8 @@ services:
       - traefik.http.routers.cicd-logs.service=cicd-logs
       - traefik.http.routers.cicd-logs.rule=Host(`cicd.applyinnovations.au`) && PathPrefix(`/logs`)
       - traefik.http.services.cicd-logs.loadbalancer.server.port=80
+      - traefik.http.routers.cicd-logs.tls=true
+      - traefik.http.routers.cicd-logs.tls.certresolver=applyinnovations
 
   traefik:
     restart: unless-stopped
@@ -47,12 +51,15 @@ services:
       - 443:443
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - traefik_certificates:/certificates
     networks:
       - traefik-proxy
     labels:
       - traefik.enable=true
       - traefik.http.routers.traefik.service=api@internal
       - traefik.http.routers.traefik.rule=Host(`traefik.applyinnovations.au`)
+      - traefik.http.routers.traefik.tls=true
+      - traefik.http.routers.traefik.tls.certresolver=applyinnovations
 
 networks:
   cicd-caddy:
@@ -66,3 +73,4 @@ volumes:
   logs:
   tmp:
   secrets:
+  traefik_certificates:
