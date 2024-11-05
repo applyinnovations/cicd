@@ -16,6 +16,7 @@ services:
       - traefik.http.routers.cicd.priority=0
       - traefik.http.routers.cicd.rule=Host(`cicd.applyinnovations.au`)
       - traefik.http.services.cicd.loadbalancer.server.port=80
+      - traefik.http.routers.cicd.service=cicd
 
   dozzle:
     image: amir20/dozzle:latest
@@ -31,8 +32,10 @@ services:
       - traefik-proxy
     labels:
       - traefik.enable=true
-      - traefik.http.routers.cicd.rule=Host(`cicd.applyinnovations.au`)
-      - traefik.http.routers.cicd.rule=PathPrefix(`/logs`)
+      - traefik.http.routers.cicd-logs.priority=1
+      - traefik.http.routers.cicd-logs.rule=Host(`cicd.applyinnovations.au`)
+      - traefik.http.routers.cicd-logs.rule=PathPrefix(`/logs`)
+      - traefik.http.routers.cicd-logs.service=cicd-logs
       - traefik.http.services.cicd-logs.loadbalancer.server.port=80
 
   traefik:
