@@ -3,17 +3,22 @@ services:
     restart: unless-stopped
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: cicd.Dockerfile
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - tmp:/tmp
       - logs:/logs
       - secrets:/secrets
     networks:
-      - cicd-caddy
+      - traefik-proxy
     labels:
-      caddy: cicd.applyinnovations.au
-      caddy.reverse_proxy_1: "/* {{upstreams 80}}"
+      - traefik.enable=true
+      - traefik.http.routers.cicd.priority=1
+      - traefik.http.routers.cicd.service=cicd
+      - traefik.http.routers.cicd.rule=Host(`cicd.applyinnovations.au`)
+      - traefik.http.services.cicd.loadbalancer.server.port=80
+      - traefik.http.routers.cicd.tls=true
+      - traefik.http.routers.cicd.tls.certresolver=applyinnovations
 
   dozzle:
     image: amir20/dozzle:latest
@@ -26,43 +31,46 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
-      - cicd-caddy
+      - traefik-proxy
     labels:
-      caddy: cicd.applyinnovations.au
-      caddy.reverse_proxy_0: "/logs* {{upstreams 80}}"
+      - traefik.enable=true
+      - traefik.http.routers.cicd-logs.priority=2
+      - traefik.http.routers.cicd-logs.service=cicd-logs
+      - traefik.http.routers.cicd-logs.rule=Host(`cicd.applyinnovations.au`) && PathPrefix(`/logs`)
+      - traefik.http.services.cicd-logs.loadbalancer.server.port=80
+      - traefik.http.routers.cicd-logs.tls=true
+      - traefik.http.routers.cicd-logs.tls.certresolver=applyinnovations
 
-  caddy:
-    image: lucaslorentz/caddy-docker-proxy:ci-alpine
+  traefik:
+    restart: unless-stopped
+    build: 
+      context: .
+      dockerfile: traefik.Dockerfile
     ports:
       - 80:80
       - 443:443
-    networks:
-      - cicd-caddy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - caddy_data:/data
-    restart: unless-stopped
-    deploy:
-      labels: # Global options
-        caddy.email: hello@applyinnovations.com.au
-      placement:
-        constraints:
-          - node.role == manager
-      replicas: 1
-      restart_policy:
-        condition: any
-      resources:
-        reservations:
-          cpus: "0.1"
-          memory: 200M
+      - traefik_certificates:/certificates
+    networks:
+      - traefik-proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik.service=api@internal
+      - traefik.http.routers.traefik.rule=Host(`traefik.applyinnovations.au`)
+      - traefik.http.routers.traefik.tls=true
+      - traefik.http.routers.traefik.tls.certresolver=applyinnovations
 
 networks:
   cicd-caddy:
     name: cicd-caddy
+    driver: bridge
+  traefik-proxy:
+    name: traefik-proxy
     driver: bridge 
 
 volumes:
-  caddy_data:
   logs:
   tmp:
   secrets:
+  traefik_certificates:
