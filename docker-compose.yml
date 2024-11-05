@@ -9,6 +9,8 @@ services:
       - tmp:/tmp
       - logs:/logs
       - secrets:/secrets
+    networks:
+      - traefik-proxy
     labels:
       - traefik.enable=true
       - traefik.http.routers.cicd.priority=0
@@ -25,6 +27,8 @@ services:
       DOZZLE_NO_ANALYTICS: true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - traefik-proxy
     labels:
       - traefik.enable=true
       - traefik.http.routers.cicd-logs.priority=1
@@ -45,7 +49,8 @@ services:
     networks:
       - traefik-proxy
     labels:
-      - "traefik.http.routers.traefik-api.rule=Host(`cicd.applyinnovations.au/traefik`)"
+      - "traefik.http.routers.traefik-api.rule=Host(`cicd.applyinnovations.au`)"
+      - traefik.http.routers.traefik-api.rule=PathPrefix(`/traefik`)
       - "traefik.http.routers.traefik-api.service=api@internal"
 
 networks:
