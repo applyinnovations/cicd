@@ -81,7 +81,7 @@ func handleUp(ctx Context, tokenSource oauth2.TokenSource) error {
 		}
 	}
 
-	cmd := exec.Command("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.projectName, "up", "--quiet-pull", "--detach", "--build", "--remove-orphans")
+	cmd := exec.Command("docker", "compose", "--project-directory", cacheDir, "--file", ymlFilePath, "--project-name", ctx.projectName, "up", "--detach", "--build", "--remove-orphans")
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
 	cmd.Env = secrets
