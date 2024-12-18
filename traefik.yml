@@ -11,8 +11,6 @@ entryPoints:
           scheme: https
   websecure:
     address: ":443"
-  tesla-telemetry:
-    address: ":4443"
 
 certificatesResolvers:
   applyinnovations:
