@@ -12,8 +12,6 @@ entryPoints:
   websecure:
     address: ":443"
     asDefault: true
-  kafka:
-    address: ":9092"
 
 certificatesResolvers:
   applyinnovations:
