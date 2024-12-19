@@ -11,6 +11,8 @@ entryPoints:
           scheme: https
   websecure:
     address: ":443"
+  kafka:
+    address: ":9092"
 
 certificatesResolvers:
   applyinnovations:
